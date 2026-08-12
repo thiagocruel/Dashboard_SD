@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <meta name="googlebot" content="noindex,nofollow,noarchive" />
+    <meta name="description" content="Resumo consolidado das DREs do Grupo São Domingos." />
+    <link rel="icon" href="./favicon.svg" />
+    <link rel="stylesheet" href="./dre-dashboard.css?v=1" />
+    <title>Resumo DRE | Grupo São Domingos</title>
+  </head>
+  <body>
+    <header class="dre-topbar">
+      <a class="dre-brand" href="./?release=20260812-dre1" aria-label="Voltar ao Dashboard Gerencial">
+        <img src="./logo-postos-sao-domingos.png" alt="Postos São Domingos" />
+        <span><small>GRUPO SÃO DOMINGOS</small><strong>Resumo DRE</strong></span>
+      </a>
+      <nav aria-label="Navegação principal">
+        <a href="./?release=20260812-dre1">Dashboard Gerencial</a>
+        <a class="is-active" href="./dre.html?v=1" aria-current="page">Resumo DRE</a>
+      </nav>
+      <div class="dre-stamp"><small>BASE DRE</small><strong>Jan–Jul/26</strong></div>
+    </header>
+
+    <main>
+      <section class="dre-hero">
+        <div>
+          <p>VISÃO FINANCEIRA CONSOLIDADA</p>
+          <h1>Resultado dos 17 postos</h1>
+          <span id="scopeSummary">Janeiro a julho · 17 postos · 3 cidades</span>
+        </div>
+        <div class="dre-source"><strong>17 DREs conciliadas</strong><span>Comparativo 2026 × 2025</span></div>
+      </section>
+
+      <section class="dre-filters" aria-label="Filtros da DRE">
+        <label>Cidade<select id="cityFilter"><option value="ALL">Todas as cidades</option></select></label>
+        <label>Posto<select id="branchFilter"><option value="ALL">Todos os postos</option></select></label>
+        <fieldset>
+          <legend>Meses</legend>
+          <div id="monthFilters" class="month-filters"></div>
+        </fieldset>
+        <button id="resetFilters" type="button">Limpar filtros</button>
+      </section>
+
+      <div id="taxAlert" class="dre-alert" role="status"></div>
+
+      <section id="metricCards" class="dre-cards" aria-label="Indicadores financeiros"></section>
+
+      <section class="dre-grid">
+        <article class="dre-panel trend-panel">
+          <header><div><small>EVOLUÇÃO MENSAL</small><h2>Lucro líquido</h2></div><span>R$ por mês</span></header>
+          <div id="profitTrend" class="profit-trend"></div>
+        </article>
+        <article class="dre-panel bridge-panel">
+          <header><div><small>FORMAÇÃO DO RESULTADO</small><h2>Resumo consolidado</h2></div><span>2026 × 2025</span></header>
+          <div class="table-scroll"><table><thead><tr><th>Linha</th><th>2026</th><th>2025</th><th>Δ</th></tr></thead><tbody id="bridgeBody"></tbody></table></div>
+        </article>
+      </section>
+
+      <section class="dre-panel branch-panel">
+        <header><div><small>RANKING FINANCEIRO</small><h2>Resultado por posto</h2></div><span id="branchCount"></span></header>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Posto</th><th>Cidade</th><th>Lucro líquido 2026</th><th>Lucro líquido 2025</th><th>Δ anual</th><th>Margem líquida</th><th>Lucro loja 2026</th></tr></thead>
+            <tbody id="branchBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="dre-method">
+        <div><small>METODOLOGIA</small><strong>Lucro líquido geral</strong><p>Total final de cada DRE, conciliado como EBITDA mais IRPJ/CSLL.</p></div>
+        <div><small>METODOLOGIA</small><strong>Lucro líquido loja</strong><p>Lucro bruto da conveniência somado às receitas e despesas identificadas diretamente como Loja/Conveniência, sem rateio corporativo ou de imposto.</p></div>
+        <div><small>COBERTURA</small><strong>15 lojas com operação</strong><p>Boa Vizinhança e No Preço não apresentam faturamento de conveniência nas DREs recebidas.</p></div>
+      </section>
+    </main>
+
+    <script src="./dre-data.js?v=1"></script>
+    <script defer src="./dre-dashboard.js?v=1"></script>
+  </body>
+</html>
