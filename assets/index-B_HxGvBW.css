@@ -43,6 +43,9 @@ button {
   overflow: hidden;
   text-transform: uppercase;
 }
+.dashboard-shell button {
+  text-transform: uppercase;
+}
 .topbar {
   border-bottom: 1px solid var(--line);
   background: #fff;
@@ -80,7 +83,8 @@ button {
 }
 .title-block h1::after {
   content: "DASHBOARD GERENCIAL - SÃO DOMINGOS";
-  font-size: 24px;
+  white-space: nowrap;
+  font-size: 21px;
 }
 .top-summary {
   height: 34px;
