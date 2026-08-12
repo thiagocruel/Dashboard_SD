@@ -1,0 +1,37 @@
+(() => {
+  window.__NPS_GOOGLE_12M__ = {
+    meta: {
+      label: "NPS estimado — Google",
+      source: "Avaliações públicas do Google Maps",
+      startDate: "2025-08-12",
+      endDate: "2026-08-12",
+      formula: "5 estrelas = promotor; 4 estrelas = neutro; 1 a 3 estrelas = detrator",
+      profilesFound: 16,
+      reviews: 158,
+      promoters: 82,
+      neutrals: 18,
+      detractors: 58,
+      nps: 15.1899,
+      averageStars: 3.5886,
+      noGoogleProfile: [6828],
+    },
+    branches: {
+      1:    { reviews: 23, promoters: 7,  neutrals: 2, detractors: 14, starsSum: 58,  placeId: "ChIJ40YLoQdMxwcREs3BMxGXZX0", googleTitle: "Posto São Domingos Jockey" },
+      2380: { reviews: 8,  promoters: 5,  neutrals: 1, detractors: 2,  starsSum: 31,  placeId: "ChIJq5PZ7qZJxwcRsRxLgn6hCJU", googleTitle: "Posto São Domingos Gavião" },
+      2564: { reviews: 19, promoters: 10, neutrals: 1, detractors: 8,  starsSum: 72,  placeId: "ChIJq6oakW9IxwcR9M-cfPKkizk", googleTitle: "Posto Sao Domingos Jangada" },
+      2565: { reviews: 8,  promoters: 3,  neutrals: 0, detractors: 5,  starsSum: 22,  placeId: "ChIJK-H1QSdLxwcRYlX3TVAJJm8", googleTitle: "Posto São Domingos - Ipiranga" },
+      2736: { reviews: 9,  promoters: 4,  neutrals: 1, detractors: 4,  starsSum: 28,  placeId: "ChIJebwrcGtPxwcRh_bqdtIp06w", googleTitle: "Posto São Domingos Cidade | BR" },
+      2737: { reviews: 8,  promoters: 2,  neutrals: 1, detractors: 5,  starsSum: 19,  placeId: "ChIJP5RARnZPxwcRr0NX0gDsR5I", googleTitle: "Posto Modelo Texaco" },
+      3221: { reviews: 12, promoters: 6,  neutrals: 1, detractors: 5,  starsSum: 40,  placeId: "ChIJ___vqFBIxwcRxtiRKCRC0Nw", googleTitle: "Posto Ipiranga" },
+      3222: { reviews: 11, promoters: 6,  neutrals: 3, detractors: 2,  starsSum: 46,  placeId: "ChIJ9bmfzdtPxwcRobC9OJr6Y-c", googleTitle: "Posto São Domingos Uirapuru" },
+      3805: { reviews: 11, promoters: 8,  neutrals: 1, detractors: 2,  starsSum: 49,  placeId: "ChIJ1VEzG_HH6gcREk7pl_TJbAw", googleTitle: "Posto de Gasolina São Domingos Fernandes Távora" },
+      3946: { reviews: 7,  promoters: 4,  neutrals: 0, detractors: 3,  starsSum: 25,  placeId: "ChIJL8Rz6DnH6gcRfXvEc8HH0I0", googleTitle: "Station Santo Domingo" },
+      3947: { reviews: 3,  promoters: 2,  neutrals: 0, detractors: 1,  starsSum: 11,  placeId: "ChIJmxjt_h3H6gcRExKj7TgYtYM", googleTitle: "Posto Glorimar" },
+      4458: { reviews: 1,  promoters: 1,  neutrals: 0, detractors: 0,  starsSum: 5,   placeId: "ChIJ4aRj1APH6gcRAo5TiY_uFKA", googleTitle: "Posto Flash" },
+      4459: { reviews: 8,  promoters: 4,  neutrals: 2, detractors: 2,  starsSum: 32,  placeId: "ChIJeVM2zSDH6gcRf5QkwQa-dBE", googleTitle: "Posto São Domingos Coração de Jesus" },
+      4756: { reviews: 27, promoters: 19, neutrals: 5, detractors: 3,  starsSum: 120, placeId: "ChIJPW2ZCbzF6gcREcslvjh9TBQ", googleTitle: "Posto São Domingos Jaburuna" },
+      4757: { reviews: 1,  promoters: 1,  neutrals: 0, detractors: 0,  starsSum: 5,   placeId: "ChIJM46oQNk2jgcRg-IVWepL1mk", googleTitle: "Station Santo Domingo" },
+      5832: { reviews: 2,  promoters: 0,  neutrals: 0, detractors: 2,  starsSum: 4,   placeId: "ChIJDwF1YQBJxwcRLk1kb-8-sIo", googleTitle: "Posto No Preço" },
+    },
+  };
+})();
