@@ -942,3 +942,5 @@ button {
     width: 1000px;
   }
 }
+/* Exportação removida da visão executiva. */
+.header-actions .primary-button{display:none!important}
