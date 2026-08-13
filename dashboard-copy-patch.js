@@ -22,6 +22,17 @@
         button.remove();
       }
     });
+
+    const productivityGrid = document.querySelector(".productivity-grid");
+    if (productivityGrid) {
+      productivityGrid.querySelectorAll("button").forEach((button) => {
+        const label = button.querySelector("span")?.textContent || "";
+        if (label.toLocaleUpperCase("pt-BR").startsWith("FATURAMENTO / FE")) {
+          button.remove();
+        }
+      });
+      productivityGrid.classList.add("without-revenue-per-fe");
+    }
   };
 
   const root = document.getElementById("root");
