@@ -183,8 +183,8 @@
         <div class="comparison-group" title="${item.label}${item.detail ? ` · ${item.detail}` : ""}">
           <strong class="comparison-delta ${item.delta == null ? "is-muted" : item.delta >= 0 ? "is-positive" : "is-negative"}">${formatDelta(item.delta)}</strong>
           <div class="comparison-pair">
-            <span class="comparison-series current ${item.current < 0 ? "is-value-negative" : ""}" title="2026: ${formatValue(item.current, metric.format, false)}"><b>${formatBarValue(item.current, metric.format, compactLabels)}</b><i style="${barStyle(item.current, scale)}"></i><small>26</small></span>
             <span class="comparison-series previous ${item.previous < 0 ? "is-value-negative" : ""}" title="2025: ${formatValue(item.previous, metric.format, false)}"><b>${formatBarValue(item.previous, metric.format, compactLabels)}</b><i style="${barStyle(item.previous, scale)}"></i><small>25</small></span>
+            <span class="comparison-series current ${item.current < 0 ? "is-value-negative" : ""}" title="2026: ${formatValue(item.current, metric.format, false)}"><b>${formatBarValue(item.current, metric.format, compactLabels)}</b><i style="${barStyle(item.current, scale)}"></i><small>26</small></span>
           </div>
           <span class="comparison-name">${item.label}</span>
         </div>`).join("")}
@@ -202,7 +202,7 @@
       legend.className = "chart-legend";
       header.append(legend);
     }
-    legend.innerHTML = `<span class="legend-current"><i></i>2026</span><span class="legend-previous"><i></i>2025</span><b>Rótulo: variação anual</b>`;
+    legend.innerHTML = `<span class="legend-previous"><i></i>2025</span><span class="legend-current"><i></i>2026</span><b>Rótulo: variação anual</b>`;
   }
 
   function ensureComparisonBody(panel) {
@@ -261,7 +261,7 @@
 
   function updateFixedCopy() {
     const contentDescription = document.querySelector(".content-heading p");
-    if (contentDescription) contentDescription.textContent = "Os gráficos comparam 2026 × 2025 por filial e por mês.";
+    if (contentDescription) contentDescription.textContent = "Os gráficos comparam 2025 × 2026 por filial e por mês.";
     const productivityTitle = document.querySelector(".productivity-card header h3");
     if (productivityTitle) productivityTitle.textContent = "PRODUTIVIDADE";
     const updateStamp = document.querySelector(".update-stamp");
