@@ -657,6 +657,9 @@ button {
   line-height: 1;
   overflow: hidden;
 }
+.productivity-grid.without-revenue-per-fe button:last-child {
+  grid-column: 1 / -1;
+}
 .formula-note {
   color: #6f7f8e;
   border-left: 2px solid var(--coral);
