@@ -25,13 +25,15 @@
 
     const productivityGrid = document.querySelector(".productivity-grid");
     if (productivityGrid) {
+      let removedRevenuePerFe = false;
       productivityGrid.querySelectorAll("button").forEach((button) => {
         const label = button.querySelector("span")?.textContent || "";
         if (label.toLocaleUpperCase("pt-BR").startsWith("FATURAMENTO / FE")) {
           button.remove();
+          removedRevenuePerFe = true;
         }
       });
-      productivityGrid.classList.add("without-revenue-per-fe");
+      productivityGrid.classList.toggle("without-revenue-per-fe", removedRevenuePerFe);
     }
   };
 
