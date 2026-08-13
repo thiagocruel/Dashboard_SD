@@ -1,5 +1,5 @@
 (() => {
-  window.__TURNOVER_PATCH_VERSION__ = 6;
+  window.__TURNOVER_PATCH_VERSION__ = 7;
   const GENERAL = "6,78%";
   const FORTALEZA = "8,04%";
   const SOBRAL_TERESINA = "5,26%";
@@ -27,8 +27,8 @@
     if (indicator) indicator.className = "bad";
     setText(card.querySelector(":scope > strong"), GENERAL);
     const foot = card.querySelectorAll(".kpi-foot span");
-    setFoot(foot[0], "CN Fortaleza", FORTALEZA, "negative");
-    setFoot(foot[1], "CN Sobral/Teresina", SOBRAL_TERESINA, "muted");
+    setFoot(foot[0], "CN Fortaleza · alto", FORTALEZA, "negative");
+    setFoot(foot[1], "CN Sobral/Teresina · atenção", SOBRAL_TERESINA, "attention");
   }
 
   function updateTurnoverPanel() {
@@ -37,7 +37,7 @@
     const empty = document.querySelector(".empty-chart");
     if (!empty) return;
     setText(empty.querySelector("strong"), `GERAL ${GENERAL} · CN FORTALEZA ${FORTALEZA} · CN SOBRAL/TERESINA ${SOBRAL_TERESINA}`);
-    setText(empty.querySelector("span"), "PERÍODO: JAN–JUL/26.");
+    setText(empty.querySelector("span"), "JAN–JUL/26 · BOM ≤ 4% · ATENÇÃO ≤ 6% · ALTO > 6%.");
   }
 
   let scheduled = false;
