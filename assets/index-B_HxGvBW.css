@@ -540,6 +540,9 @@ button {
 .negative {
   color: var(--red) !important;
 }
+.attention {
+  color: #c47600 !important;
+}
 .muted {
   color: #9ba8b3 !important;
 }
