@@ -1,8 +1,8 @@
 (() => {
-  window.__TURNOVER_PATCH_VERSION__ = 2;
-  const CURRENT = "5,26%";
-  const PREVIOUS = "5,02%";
-  const DELTA = "+0,24 P.P.";
+  window.__TURNOVER_PATCH_VERSION__ = 3;
+  const CURRENT = "7,05%";
+  const PREVIOUS = "6,46%";
+  const DELTA = "+0,59 P.P.";
 
   const normalize = (value) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
   const setText = (element, value) => { if (element && element.textContent !== value) element.textContent = value; };
@@ -27,7 +27,7 @@
     setText(card.querySelector(":scope > strong"), CURRENT);
     const foot = card.querySelectorAll(".kpi-foot span");
     setFoot(foot[0], `2025 ${PREVIOUS}`, DELTA, "negative");
-    setFoot(foot[1], "CN SOBRAL + TERESINA · JAN–JUL", "FORTALEZA PENDENTE", "muted");
+    setFoot(foot[1], "CN SOBRAL + TERESINA + FORTALEZA", "JAN–JUL", "muted");
   }
 
   function updateTurnoverPanel() {
@@ -35,8 +35,8 @@
     if (!title || normalize(title.textContent) !== "TURNOVER") return;
     const empty = document.querySelector(".empty-chart");
     if (!empty) return;
-    setText(empty.querySelector("strong"), "DADO CONSOLIDADO DO CN SOBRAL + TERESINA.");
-    setText(empty.querySelector("span"), "JAN–JUL/26 · SEM RATEIO POR POSTO · FORTALEZA PENDENTE.");
+    setText(empty.querySelector("strong"), "DADO CONSOLIDADO DOS CNs SOBRAL + TERESINA + FORTALEZA.");
+    setText(empty.querySelector("span"), "JAN–JUL/26 · COM REDUÇÃO MENSAL DE 1 ADMISSÃO E 1 DEMISSÃO POR CN.");
   }
 
   let scheduled = false;
