@@ -128,6 +128,17 @@
       }
     });
 
+    document.querySelectorAll(".kpi-card").forEach((card) => {
+      const title = card.querySelector("h3");
+      if (normalize(title?.textContent) !== "RESULTADO DIRETO LOJA") return;
+      const footLines = card.querySelectorAll(".kpi-foot span");
+      const note = footLines[footLines.length - 1];
+      if (note && note.textContent !== "SEM RATEIO DE DESPESAS") {
+        note.textContent = "SEM RATEIO DE DESPESAS";
+      }
+      card.title = "Lucro bruto da conveniência menos despesas diretamente identificadas com loja; sem rateio das despesas compartilhadas e dos impostos sobre o lucro.";
+    });
+
     const productivityGrid = document.querySelector(".productivity-grid");
     if (productivityGrid) {
       let removedRevenuePerFe = false;
