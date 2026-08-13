@@ -8,9 +8,10 @@
     ["revenue", "Faturamento", "Receita total"],
     ["grossProfit", "Lucro bruto", "Após CMV"],
     ["ebitda", "EBITDA", "Resultado operacional"],
-    ["netProfit", "Lucro líquido", "Após IRPJ/CSLL"],
+    ["netProfit", "Lucro líquido geral", "Pista + loja"],
+    ["fuelNetProfit", "Lucro líquido pista", "Geral menos loja"],
+    ["storeNetProfit", "Lucro líquido loja", "DRE exclusiva da conveniência"],
     ["storeRevenue", "Faturamento loja", "15 lojas com operação"],
-    ["storeNetProfit", "Lucro líquido loja", "Resultado direto"],
   ];
 
   const cityFilter = document.querySelector("#cityFilter");
@@ -89,13 +90,13 @@
   function renderBranches() {
     const branchRows = branches.filter((branch) => (state.city === "ALL" || branch.city === state.city) && (state.branch === "ALL" || String(branch.id) === state.branch)).map((branch) => {
       const r26 = selected(2026, branch.id), r25 = selected(2025, branch.id);
-      return { branch, net26: sum(r26, "netProfit"), net25: sum(r25, "netProfit"), revenue26: sum(r26, "revenue"), store26: sum(r26, "storeNetProfit") };
+      return { branch, net26: sum(r26, "netProfit"), net25: sum(r25, "netProfit"), revenue26: sum(r26, "revenue"), fuel26: sum(r26, "fuelNetProfit"), store26: sum(r26, "storeNetProfit") };
     }).sort((a, b) => b.net26 - a.net26);
     document.querySelector("#branchCount").textContent = `${branchRows.length} posto(s)`;
     document.querySelector("#branchBody").innerHTML = branchRows.map((row) => {
       const change = delta(row.net26, row.net25), margin = row.revenue26 ? row.net26 / row.revenue26 * 100 : null;
       const tone = change == null ? "" : change >= 0 ? "delta-positive" : "delta-negative";
-      return `<tr><td>${String(row.branch.number).padStart(2, "0")} · ${shortName(row.branch.name)}</td><td>${row.branch.city[0]}${row.branch.city.slice(1).toLowerCase()}</td><td>${money(row.net26)}</td><td>${money(row.net25)}</td><td class="${tone}">${percent(change)}</td><td>${margin == null ? "—" : `${margin.toFixed(1).replace(".", ",")}%`}</td><td>${row.branch.hasStore ? money(row.store26) : "—"}</td></tr>`;
+      return `<tr><td>${String(row.branch.number).padStart(2, "0")} · ${shortName(row.branch.name)}</td><td>${row.branch.city[0]}${row.branch.city.slice(1).toLowerCase()}</td><td>${money(row.net26)}</td><td>${money(row.fuel26)}</td><td>${row.branch.hasStore ? money(row.store26) : "—"}</td><td>${money(row.net25)}</td><td class="${tone}">${percent(change)}</td><td>${margin == null ? "—" : `${margin.toFixed(1).replace(".", ",")}%`}</td></tr>`;
     }).join("");
   }
 

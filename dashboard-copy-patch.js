@@ -128,17 +128,6 @@
       }
     });
 
-    document.querySelectorAll(".kpi-card").forEach((card) => {
-      const title = card.querySelector("h3");
-      if (normalize(title?.textContent) !== "RESULTADO DIRETO LOJA") return;
-      const footLines = card.querySelectorAll(".kpi-foot span");
-      const note = footLines[footLines.length - 1];
-      if (note && note.textContent !== "SEM RATEIO DE DESPESAS") {
-        note.textContent = "SEM RATEIO DE DESPESAS";
-      }
-      card.title = "Lucro bruto da conveniência menos despesas diretamente identificadas com loja; sem rateio das despesas compartilhadas e dos impostos sobre o lucro.";
-    });
-
     const productivityGrid = document.querySelector(".productivity-grid");
     if (productivityGrid) {
       let removedRevenuePerFe = false;
@@ -160,26 +149,45 @@
     );
     if (!executiveGrid || !productivityCard || !branchPanel || !occupancyButton) return;
 
-    executiveGrid.classList.add("occupancy-dashboard");
-    if (normalize(branchPanel.querySelector(".panel-header h3")?.textContent) !== "OCUPACAO REAL") {
-      occupancyButton.click();
-      return;
-    }
-
+    productivityCard.classList.add("force-occupancy-only");
     let occupancyOnly = productivityCard.querySelector(".occupancy-only");
     if (!occupancyOnly) {
       occupancyOnly = document.createElement("div");
       occupancyOnly.className = "occupancy-only";
+      occupancyOnly.setAttribute("role", "button");
+      occupancyOnly.setAttribute("tabindex", "0");
+      occupancyOnly.title = "Clique para exibir a ocupação por filial e por mês.";
       occupancyOnly.innerHTML = `
         <span>PERCENTUAL DE OCUPAÇÃO</span>
         <strong></strong>
         <small>Base: 14 transações por VIP/hora</small>
         <p>Acima de 100% sinaliza sobrecarga ou possível concentração de registros.</p>`;
+      occupancyOnly.addEventListener("click", () => occupancyButton.click());
+      occupancyOnly.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") occupancyButton.click();
+      });
       productivityCard.append(occupancyOnly);
     }
     const occupancyValue = occupancyButton.querySelector("strong")?.textContent || "—";
     const valueTarget = occupancyOnly.querySelector("strong");
     if (valueTarget.textContent !== occupancyValue) valueTarget.textContent = occupancyValue;
+
+    const panelTitle = normalize(branchPanel.querySelector(".panel-header h3")?.textContent);
+    const occupancySelected = panelTitle === "OCUPACAO REAL" || panelTitle === "PRODUTIVIDADE";
+    executiveGrid.classList.toggle("turnover-dashboard", panelTitle.startsWith("TURNOVER"));
+    if (!window.__OCCUPANCY_VIEW_INITIALIZED__ && !occupancySelected) {
+      window.__OCCUPANCY_VIEW_INITIALIZED__ = true;
+      occupancyButton.click();
+      return;
+    }
+    window.__OCCUPANCY_VIEW_INITIALIZED__ = true;
+    if (!occupancySelected) {
+      executiveGrid.classList.remove("occupancy-dashboard");
+      executiveGrid.querySelector(".monthly-occupancy-panel")?.remove();
+      return;
+    }
+
+    executiveGrid.classList.add("occupancy-dashboard");
 
     const branchBars = branchPanel.querySelector(".branch-bars");
     if (!branchBars) return;

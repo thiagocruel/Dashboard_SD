@@ -7,7 +7,7 @@
     <meta name="googlebot" content="noindex,nofollow,noarchive" />
     <meta name="description" content="Resumo consolidado das DREs do Grupo São Domingos." />
     <link rel="icon" href="./favicon.svg" />
-    <link rel="stylesheet" href="./dre-dashboard.css?v=1" />
+    <link rel="stylesheet" href="./dre-dashboard.css?v=2" />
     <title>Resumo DRE | Grupo São Domingos</title>
   </head>
   <body>
@@ -62,20 +62,21 @@
         <header><div><small>RANKING FINANCEIRO</small><h2>Resultado por posto</h2></div><span id="branchCount"></span></header>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Posto</th><th>Cidade</th><th>Lucro líquido 2026</th><th>Lucro líquido 2025</th><th>Δ anual</th><th>Margem líquida</th><th>Lucro loja 2026</th></tr></thead>
+            <thead><tr><th>Posto</th><th>Cidade</th><th>Lucro geral 2026</th><th>Lucro pista 2026</th><th>Lucro loja 2026</th><th>Lucro geral 2025</th><th>Δ anual</th><th>Margem líquida</th></tr></thead>
             <tbody id="branchBody"></tbody>
           </table>
         </div>
       </section>
 
       <section class="dre-method">
-        <div><small>METODOLOGIA</small><strong>Lucro líquido geral</strong><p>Total final de cada DRE, conciliado como EBITDA mais IRPJ/CSLL.</p></div>
-        <div><small>METODOLOGIA</small><strong>Lucro líquido loja</strong><p>Lucro bruto da conveniência somado às receitas e despesas identificadas diretamente como Loja/Conveniência, sem rateio corporativo ou de imposto.</p></div>
+        <div><small>METODOLOGIA</small><strong>Lucro líquido geral</strong><p>Total final de cada DRE geral, conciliado como EBITDA mais IRPJ/CSLL.</p></div>
+        <div><small>METODOLOGIA</small><strong>Lucro líquido pista</strong><p>Lucro líquido geral menos o total final da DRE exclusiva da conveniência.</p></div>
+        <div><small>METODOLOGIA</small><strong>Lucro líquido loja</strong><p>Total final da DRE exclusiva da conveniência de cada unidade.</p></div>
         <div><small>COBERTURA</small><strong>15 lojas com operação</strong><p>Boa Vizinhança e No Preço não apresentam faturamento de conveniência nas DREs recebidas.</p></div>
       </section>
     </main>
 
-    <script src="./dre-data.js?v=1"></script>
-    <script defer src="./dre-dashboard.js?v=1"></script>
+    <script src="./dre-data.js?v=2"></script>
+    <script defer src="./dre-dashboard.js?v=2"></script>
   </body>
 </html>

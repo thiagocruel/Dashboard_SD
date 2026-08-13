@@ -96,6 +96,7 @@
   function updateCard() {
     const card = findNpsCard();
     if (!card) return;
+    card.classList.add("nps-card");
     const scope = selectedCompanies();
     const stats = aggregate(scope);
     setText(card.querySelector("h3"), "NPS estimado — Google");
@@ -179,7 +180,10 @@
 
   function updateCoverage() {
     const item = [...document.querySelectorAll(".coverage-strip > div")].find((div) => normalize(div.querySelector("span")?.textContent) === "INDICADORES EM IMPLANTACAO");
-    if (item) setText(item.querySelector("strong"), "Turnover Fortaleza");
+    if (item) {
+      setText(item.querySelector("span"), "COBERTURA ATUAL");
+      setText(item.querySelector("strong"), "17 postos · Jan–Jul/26");
+    }
   }
 
   function captureOpenFilters() {

@@ -436,7 +436,7 @@ button {
   font-size: 10px;
 }
 .kpi-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 6px;
   min-width: 0;
@@ -1147,4 +1147,135 @@ button {
   grid-column: 1 / -1;
   place-self: center;
   font-size: 10px;
+}
+
+/* Cards executivos: 12 indicadores sem corte de rótulos ou comparativos. */
+.kpi-card h3 {
+  height: auto;
+  min-height: 28px;
+  font-size: 12px;
+  line-height: 1.12;
+  overflow: visible;
+}
+.kpi-card > strong {
+  font-size: 17px;
+}
+.kpi-foot span,
+.kpi-foot b {
+  font-size: 8px;
+}
+.nps-card .kpi-foot span,
+.turnover-card .kpi-foot span {
+  grid-template-columns: minmax(0, 1fr) auto;
+  white-space: normal;
+  min-width: 0;
+  font-size: 6px;
+  line-height: 1;
+  display: grid;
+}
+.nps-card .kpi-foot b,
+.turnover-card .kpi-foot b {
+  white-space: nowrap;
+  min-width: 0;
+  font-size: 6px;
+  line-height: 1;
+}
+.nps-card h3,
+.turnover-card h3 {
+  min-height: 24px;
+  font-size: 10.5px;
+}
+.nps-card > strong,
+.turnover-card > strong {
+  font-size: 16px;
+}
+.kpi-top i.attention {
+  background: #d68a16;
+  box-shadow: 0 0 0 2px #fff1d8;
+}
+
+/* A produtividade permanece resumida na ocupação, mas pode ser clicada. */
+.productivity-card.force-occupancy-only {
+  grid-template-rows: 42px minmax(0, 1fr);
+}
+.force-occupancy-only .productivity-hero,
+.force-occupancy-only .productivity-grid,
+.force-occupancy-only .formula-note {
+  display: none !important;
+}
+.force-occupancy-only .occupancy-only {
+  cursor: pointer;
+}
+
+/* Turnover: matriz mensal exata para Geral e os dois centros de negócio. */
+.turnover-monthly-panel {
+  min-height: 0;
+  padding: 12px;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+}
+.turnover-table {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.turnover-row {
+  grid-template-columns: 100px repeat(var(--turnover-months), minmax(44px, 1fr));
+  min-height: 34px;
+  display: grid;
+}
+.turnover-row + .turnover-row {
+  border-top: 1px solid var(--line);
+}
+.turnover-row > strong,
+.turnover-row > span {
+  min-width: 0;
+  place-content: center;
+  padding: 5px 4px;
+  text-align: center;
+  font-size: 9px;
+  display: grid;
+}
+.turnover-row > strong {
+  justify-content: start;
+  padding-left: 9px;
+  color: var(--navy);
+  background: #f5f8fa;
+}
+.turnover-row > span + span {
+  border-left: 1px solid #edf1f3;
+}
+.turnover-head {
+  min-height: 25px;
+  color: #718296;
+  background: #f9fbfc;
+  font-weight: 900;
+}
+.turnover-monthly-panel > small {
+  color: #718296;
+  font-size: 8px;
+  line-height: 1.4;
+}
+.executive-grid.turnover-dashboard {
+  grid-template-columns: 190px minmax(0, 1fr);
+}
+.turnover-dashboard .productivity-card {
+  grid-template-rows: 42px minmax(0, 1fr);
+  padding: 9px;
+}
+.turnover-dashboard .productivity-card header h3 {
+  font-size: 15px;
+}
+.turnover-dashboard .panel-header {
+  min-height: 44px;
+  padding: 5px 8px;
+}
+.turnover-dashboard .panel-header h3 {
+  font-size: 13px;
+}
+.turnover-dashboard .chart-legend {
+  gap: 6px;
+  font-size: 7px;
 }
