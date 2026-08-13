@@ -98,6 +98,7 @@
     if (!card) return;
     card.classList.add("nps-card");
     const scope = selectedCompanies();
+    window.__DASHBOARD_FILTER_SCOPE__ = { companyIds: scope.map((company) => company.id) };
     const stats = aggregate(scope);
     setText(card.querySelector("h3"), "NPS estimado — Google");
     card.classList.toggle("is-pending", stats.nps == null);
@@ -229,7 +230,6 @@
       scheduled = false;
       captureOpenFilters();
       updateCard();
-      updatePanel();
       updateMethodology();
       updateCoverage();
     });

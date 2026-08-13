@@ -54,6 +54,7 @@
   }
 
   const TURNOVER = { 2025: monthly(2025), 2026: monthly(2026) };
+  window.__TURNOVER_DATA__ = TURNOVER;
 
   function selectedMonths() {
     const period = normalize(document.querySelector(".selection-summary strong")?.textContent);
@@ -152,7 +153,6 @@
     requestAnimationFrame(() => {
       scheduled = false;
       updateCard();
-      updatePanel();
     });
   }
 
