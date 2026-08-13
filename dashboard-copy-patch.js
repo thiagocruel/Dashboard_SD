@@ -191,6 +191,52 @@
     </div>`;
   }
 
+  function monthlyLineChart(items, metric, availableWidth, availableHeight) {
+    if (!items?.length) return `<div class="comparison-empty">Selecione ao menos um mês e uma filial.</div>`;
+    const width = Math.max(640, Math.round(availableWidth || 1000));
+    const height = Math.max(105, Math.round(availableHeight || 150));
+    const left = items.length === 1 ? width / 2 : 48;
+    const right = items.length === 1 ? width / 2 : width - 48;
+    const graphTop = 30;
+    const graphBottom = height - 27;
+    const values = items.flatMap((item) => [item.previous, item.current]).filter(Number.isFinite);
+    let minimum = Math.min(0, ...values);
+    let maximum = Math.max(0, ...values);
+    if (minimum === maximum) maximum = minimum + 1;
+    const range = maximum - minimum;
+    minimum -= range * 0.06;
+    maximum += range * 0.08;
+    const x = (index) => items.length === 1 ? width / 2 : left + index * (right - left) / (items.length - 1);
+    const y = (value) => graphBottom - (value - minimum) / (maximum - minimum) * (graphBottom - graphTop);
+    const path = (key) => items
+      .map((item, index) => Number.isFinite(item[key]) ? `${index ? "L" : "M"}${x(index).toFixed(1)},${y(item[key]).toFixed(1)}` : "")
+      .filter(Boolean)
+      .join(" ");
+    const zeroY = minimum < 0 && maximum > 0 ? y(0) : null;
+
+    return `<svg class="monthly-line-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${metric.label}: comparação mensal de 2025 e 2026">
+      ${items.map((item, index) => `<line class="monthly-line-grid" x1="${x(index)}" y1="20" x2="${x(index)}" y2="${height - 17}"></line>`).join("")}
+      ${zeroY == null ? "" : `<line class="monthly-line-zero" x1="28" y1="${zeroY}" x2="${width - 28}" y2="${zeroY}"></line>`}
+      <path class="monthly-line previous" d="${path("previous")}"></path>
+      <path class="monthly-line current" d="${path("current")}"></path>
+      ${items.map((item, index) => {
+        const pointX = x(index);
+        const previousY = Number.isFinite(item.previous) ? y(item.previous) : null;
+        const currentY = Number.isFinite(item.current) ? y(item.current) : null;
+        const close = previousY != null && currentY != null && Math.abs(previousY - currentY) < 17;
+        const previousLabelY = previousY == null ? null : Math.max(24, Math.min(height - 16, previousY + (close && previousY >= currentY ? 13 : -7)));
+        const currentLabelY = currentY == null ? null : Math.max(24, Math.min(height - 16, currentY + (close && currentY >= previousY ? 13 : -7)));
+        return `<g class="monthly-line-group">
+          <title>${item.label} · 2025: ${formatValue(item.previous, metric.format, false)} · 2026: ${formatValue(item.current, metric.format, false)} · variação: ${formatDelta(item.delta)}</title>
+          <text class="monthly-line-delta ${item.delta == null ? "is-muted" : item.delta >= 0 ? "is-positive" : "is-negative"}" x="${pointX}" y="11">${formatDelta(item.delta)}</text>
+          ${previousY == null ? "" : `<circle class="monthly-marker previous" cx="${pointX}" cy="${previousY}" r="4.2"></circle><text class="monthly-line-value previous" x="${pointX}" y="${previousLabelY}">${formatValue(item.previous, metric.format)}</text>`}
+          ${currentY == null ? "" : `<circle class="monthly-marker current" cx="${pointX}" cy="${currentY}" r="4.2"></circle><text class="monthly-line-value current" x="${pointX}" y="${currentLabelY}">${formatValue(item.current, metric.format)}</text>`}
+          <text class="monthly-line-month" x="${pointX}" y="${height - 4}">${item.label}</text>
+        </g>`;
+      }).join("")}
+    </svg>`;
+  }
+
   function setPanelHeader(panel, eyebrow, title) {
     const header = panel.querySelector(".panel-header");
     if (!header) return;
@@ -254,9 +300,10 @@
 
     const monthlyPanel = ensureMonthlyPanel(executiveGrid);
     setPanelHeader(monthlyPanel, "EVOLUÇÃO MENSAL", `${metric.label} mês a mês`);
-    monthlyPanel.querySelector(".monthly-comparison-chart").innerHTML = monthlyItems === null
+    const monthlyBody = monthlyPanel.querySelector(".monthly-comparison-chart");
+    monthlyBody.innerHTML = monthlyItems === null
       ? `<div class="comparison-empty"><strong>Sem abertura mensal e sem base 2025</strong><span>O NPS disponível está consolidado nos últimos 12 meses.</span></div>`
-      : comparisonChart(monthlyItems, metric);
+      : monthlyLineChart(monthlyItems, metric, monthlyBody.clientWidth, monthlyBody.clientHeight);
   }
 
   function updateFixedCopy() {

@@ -1369,7 +1369,7 @@ button {
 .comparison-delta {
   text-align: center;
   white-space: nowrap;
-  font-size: 8px;
+  font-size: 9px;
   line-height: 1;
 }
 .comparison-delta.is-positive {
@@ -1402,7 +1402,7 @@ button {
   text-align: center;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1;
   overflow: hidden;
 }
@@ -1434,7 +1434,7 @@ button {
   text-align: center;
   align-content: start;
   overflow-wrap: anywhere;
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 800;
   line-height: 1.05;
   overflow: hidden;
@@ -1450,17 +1450,96 @@ button {
   grid-template-rows: 12px minmax(0, 1fr) 17px;
 }
 .comparison-columns.is-compact .comparison-delta {
-  font-size: 6.5px;
+  font-size: 8.5px;
 }
 .comparison-columns.is-compact .comparison-series > b {
-  font-size: 6px;
+  font-size: 8px;
   display: block;
 }
 .comparison-columns.is-compact .comparison-series {
   grid-template-rows: 8px minmax(0, 1fr) 10px;
 }
 .comparison-columns.is-compact .comparison-name {
-  font-size: 6.5px;
+  font-size: 7.8px;
+}
+.monthly-line-chart {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  display: block;
+}
+.monthly-line-grid {
+  stroke: #e5ebef;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.monthly-line-zero {
+  stroke: #a9b8c2;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.monthly-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.monthly-line.previous {
+  stroke: #aebbc4;
+}
+.monthly-line.current {
+  stroke: var(--navy);
+}
+.monthly-marker {
+  stroke: #fff;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.monthly-marker.previous {
+  fill: #aebbc4;
+}
+.monthly-marker.current {
+  fill: var(--navy);
+}
+.monthly-line-value,
+.monthly-line-delta,
+.monthly-line-month {
+  text-anchor: middle;
+  font-family: inherit;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+.monthly-line-value {
+  font-size: 10px;
+}
+.monthly-line-value.previous {
+  fill: #718391;
+}
+.monthly-line-value.current {
+  fill: var(--navy);
+}
+.monthly-line-delta {
+  fill: #718391;
+  font-size: 9.5px;
+}
+.monthly-line-delta.is-positive {
+  fill: var(--green);
+}
+.monthly-line-delta.is-negative {
+  fill: var(--red);
+}
+.monthly-line-delta.is-muted {
+  fill: #8c9aa6;
+  font-size: 8.5px;
+}
+.monthly-line-month {
+  fill: #52687a;
+  font-size: 9px;
 }
 .comparison-empty {
   color: #718296;
