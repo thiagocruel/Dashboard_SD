@@ -952,3 +952,199 @@ button {
 }
 /* Exportação removida da visão executiva. */
 .header-actions .primary-button{display:none!important}
+
+/* Produtividade: leitura executiva concentrada na ocupação. */
+.executive-grid.occupancy-dashboard {
+  grid-template-columns: 190px minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.occupancy-dashboard .productivity-card {
+  grid-row: 1 / 3;
+  grid-template-rows: 42px minmax(0, 1fr);
+  padding: 9px;
+}
+.occupancy-dashboard .productivity-card header h3 {
+  font-size: 15px;
+}
+.occupancy-dashboard .productivity-hero,
+.occupancy-dashboard .productivity-grid,
+.occupancy-dashboard .formula-note {
+  display: none !important;
+}
+.occupancy-only {
+  color: #fff;
+  background: var(--navy);
+  border-left: 5px solid var(--coral);
+  align-content: center;
+  gap: 12px;
+  min-height: 0;
+  padding: 18px 13px;
+  display: grid;
+}
+.occupancy-only > span {
+  color: #c7d9e7;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.occupancy-only > strong {
+  letter-spacing: -0.055em;
+  font-size: 37px;
+  line-height: 1;
+}
+.occupancy-only > small {
+  color: #e2edf5;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.occupancy-only > p {
+  color: #b9ccda;
+  border-top: 1px solid #ffffff2e;
+  margin: 0;
+  padding-top: 10px;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.occupancy-dashboard .bar-panel,
+.monthly-occupancy-panel {
+  grid-column: 2;
+  grid-template-rows: 36px minmax(0, 1fr);
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 3px;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+}
+.occupancy-dashboard .bar-panel {
+  grid-row: 1;
+}
+.monthly-occupancy-panel {
+  grid-row: 2;
+}
+.occupancy-dashboard .panel-header,
+.monthly-occupancy-panel .panel-header {
+  min-height: 0;
+  padding: 5px 8px;
+}
+.occupancy-dashboard .panel-header h3,
+.monthly-occupancy-panel .panel-header h3 {
+  font-size: 13px;
+}
+.occupancy-dashboard .branch-bars,
+.monthly-columns {
+  --reference-position: 100%;
+  min-height: 0;
+  position: relative;
+}
+.occupancy-dashboard .branch-bars {
+  grid-template-columns: repeat(var(--branch-count), minmax(24px, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 4px;
+  padding: 18px 8px 5px 29px;
+  display: grid;
+}
+.occupancy-dashboard .bar-row {
+  grid-template-columns: 1fr;
+  grid-template-rows: 12px minmax(0, 1fr) 24px;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  display: grid;
+}
+.occupancy-dashboard .bar-row > strong {
+  grid-row: 1;
+  text-align: center;
+  font-size: 7px;
+}
+.occupancy-dashboard .bar-row > small {
+  display: none;
+}
+.occupancy-dashboard .bar-track {
+  grid-row: 2;
+  width: 100%;
+  height: 100%;
+  background: #e9eef1;
+  align-items: end;
+  display: flex;
+}
+.occupancy-dashboard .bar-track i {
+  width: 100% !important;
+  height: var(--column-height) !important;
+  border-radius: 2px 2px 0 0;
+}
+.occupancy-dashboard .bar-name {
+  grid-row: 3;
+  text-align: center;
+  align-content: start;
+  display: grid;
+}
+.occupancy-dashboard .bar-name b {
+  white-space: normal;
+  font-size: 6px;
+  line-height: 1.05;
+}
+.occupancy-dashboard .bar-name small {
+  display: none;
+}
+.occupancy-reference {
+  z-index: 3;
+  color: var(--coral);
+  border-top: 1px dashed var(--coral);
+  pointer-events: none;
+  height: 0;
+  font-size: 7px;
+  font-weight: 900;
+  line-height: 1;
+  position: absolute;
+  right: 7px;
+  bottom: calc(var(--reference-position) - 9px);
+  left: 7px;
+}
+.occupancy-dashboard .branch-bars > .occupancy-reference {
+  left: 2px;
+}
+.monthly-columns {
+  grid-template-columns: repeat(7, minmax(40px, 1fr));
+  align-items: stretch;
+  gap: 12px;
+  padding: 18px 20px 5px 30px;
+  display: grid;
+}
+.month-column {
+  grid-template-rows: 12px minmax(0, 1fr) 14px;
+  gap: 2px;
+  text-align: center;
+  min-width: 0;
+  display: grid;
+}
+.month-column > strong {
+  color: #314b62;
+  font-size: 8px;
+}
+.month-track {
+  background: #e9eef1;
+  align-items: end;
+  min-height: 0;
+  display: flex;
+}
+.month-track i {
+  background: var(--navy);
+  width: 100%;
+  height: var(--column-height);
+  border-radius: 2px 2px 0 0;
+  display: block;
+}
+.month-column > b {
+  color: #667b8d;
+  font-size: 7px;
+}
+.monthly-empty {
+  color: #8393a2;
+  grid-column: 1 / -1;
+  place-self: center;
+  font-size: 10px;
+}
