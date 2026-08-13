@@ -1,7 +1,7 @@
 (() => {
-  window.__TURNOVER_PATCH_VERSION__ = 3;
-  const CURRENT = "7,05%";
-  const PREVIOUS = "6,46%";
+  window.__TURNOVER_PATCH_VERSION__ = 4;
+  const CURRENT = "6,78%";
+  const PREVIOUS = "6,19%";
   const DELTA = "+0,59 P.P.";
 
   const normalize = (value) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
@@ -36,7 +36,7 @@
     const empty = document.querySelector(".empty-chart");
     if (!empty) return;
     setText(empty.querySelector("strong"), "DADO CONSOLIDADO DOS CNs SOBRAL + TERESINA + FORTALEZA.");
-    setText(empty.querySelector("span"), "JAN–JUL/26 · COM REDUÇÃO MENSAL DE 1 ADMISSÃO E 1 DEMISSÃO POR CN.");
+    setText(empty.querySelector("span"), "JAN–JUL/26 · SOBRAL/TERESINA: −1 ADM./DEM. · FORTALEZA: −2 ADM./DEM. AO MÊS.");
   }
 
   let scheduled = false;
