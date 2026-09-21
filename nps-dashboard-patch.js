@@ -175,7 +175,7 @@
     if (!grid || grid.querySelector("[data-nps-method]")) return;
     const article = document.createElement("article");
     article.dataset.npsMethod = "true";
-    article.innerHTML = '<span>08</span><div><strong>NPS estimado — Google</strong><p>Avaliações públicas de 12/08/2025 a 12/08/2026: 5 estrelas = promotor; 4 = neutro; 1 a 3 = detrator. NPS estimado = % promotores − % detratores. Boa Vizinhança está sem perfil Google identificável.</p></div>';
+    article.innerHTML = '<span>08</span><div><strong>NPS estimado — Google</strong><p>Avaliações públicas de 12/08/2025 a 12/08/2026: 5 estrelas = promotor; 4 = neutro; 1 a 3 = detrator. NPS estimado = % promotores − % detratores. Modelo consolida dois perfis do Google; Boa Vizinhança está sem perfil identificável.</p></div>';
     grid.append(article);
   }
 

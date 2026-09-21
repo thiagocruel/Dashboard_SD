@@ -3,7 +3,7 @@
     const actions = document.querySelector(".header-actions");
     if (!actions || actions.querySelector("[data-dre-link]")) return;
     const link = document.createElement("a");
-    link.href = "./dre.html?v=1";
+    link.href = "./dre.html?v=3";
     link.target = "_blank";
     link.rel = "noopener";
     link.dataset.dreLink = "true";
