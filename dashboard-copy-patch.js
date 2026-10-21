@@ -1,5 +1,5 @@
 (() => {
-  window.__DASHBOARD_COMPARISON_VERSION__ = 9;
+  window.__DASHBOARD_COMPARISON_VERSION__ = 10;
 
   const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO"];
   const METRICS = {
@@ -356,7 +356,7 @@
     const financialWithAugust = FINANCIAL_KEYS.has(metric.key) && effectiveFinancialMonths(months).includes(8);
     const branchTitle = metric.key === "turnover"
       ? "Turnover por centro de negócio"
-      : financialWithAugust ? `${metric.label} por filial · base comparável JAN–JUL` : `${metric.label} por filial`;
+      : financialWithAugust ? `${metric.label} por filial · base comparável JAN–AGO` : `${metric.label} por filial`;
     const branchEyebrow = metric.key === "turnover" ? "COMPARATIVO POR CENTRO DE NEGÓCIO" : "COMPARATIVO POR FILIAL · ORDENADO POR 2026";
     setPanelHeader(branchPanel, branchEyebrow, branchTitle);
     ensureComparisonBody(branchPanel).innerHTML = comparisonChart(branchItems, metric, branchItems.length > 10);
@@ -365,7 +365,7 @@
     setPanelHeader(
       monthlyPanel,
       "EVOLUÇÃO MENSAL",
-      financialWithAugust ? `${metric.label} mês a mês · AGO/25 aguardando base` : `${metric.label} mês a mês`,
+      financialWithAugust ? `${metric.label} mês a mês · base comparável JAN–AGO` : `${metric.label} mês a mês`,
     );
     const monthlyBody = monthlyPanel.querySelector(".monthly-comparison-chart");
     monthlyBody.innerHTML = monthlyItems === null
@@ -375,7 +375,7 @@
 
   function updateFixedCopy() {
     const contentDescription = document.querySelector(".content-heading p");
-    if (contentDescription) contentDescription.textContent = "Comercial comparável até JUL/26; DRE acumulada até AGO/26. Comparativos anuais usam somente meses presentes nos dois anos.";
+    if (contentDescription) contentDescription.textContent = "Comercial até JUL/26; DRE comparável até AGO/26. Comparativos anuais usam os mesmos meses em 2025 e 2026.";
     const productivityTitle = document.querySelector(".productivity-card header h3");
     if (productivityTitle) productivityTitle.textContent = "PRODUTIVIDADE";
     const updateStamp = document.querySelector(".update-stamp");
