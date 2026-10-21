@@ -1,5 +1,5 @@
 (() => {
-  window.__DASHBOARD_COMPARISON_VERSION__ = 10;
+  window.__DASHBOARD_COMPARISON_VERSION__ = 11;
 
   const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO"];
   const METRICS = {
@@ -151,6 +151,19 @@
     return `${value > 0 ? "+" : ""}${value.toFixed(1).replace(".", ",")}%`;
   }
 
+  function formatDeltaValue(current, previous, format) {
+    if (!Number.isFinite(current) || !Number.isFinite(previous)) return "—";
+    const value = current - previous;
+    const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+    const absolute = Math.abs(value);
+    if (format === "currency") return `${sign}R$ ${compactNumber(absolute)}`;
+    if (format === "liters") return `${sign}${compactNumber(absolute)} L`;
+    if (format === "integer") return `${sign}${compactNumber(absolute)}`;
+    if (format === "percent") return `${sign}${absolute.toFixed(1).replace(".", ",")} p.p.`;
+    if (format === "nps") return `${sign}${absolute.toFixed(1).replace(".", ",")} pts`;
+    return `${sign}${compactNumber(absolute)}`;
+  }
+
   function npsForCompany(companyId) {
     const item = window.__NPS_GOOGLE_12M__?.branches?.[companyId];
     return item?.reviews ? (item.promoters - item.detractors) / item.reviews * 100 : null;
@@ -240,8 +253,8 @@
     const scale = Math.max(1, ...items.flatMap((item) => [Math.abs(item.current || 0), Math.abs(item.previous || 0)]));
     return `<div class="comparison-columns ${compactLabels ? "is-compact" : ""}" style="--comparison-count:${items.length}">
       ${items.map((item) => `
-        <div class="comparison-group" title="${item.label}${item.detail ? ` · ${item.detail}` : ""}">
-          <strong class="comparison-delta ${item.delta == null ? "is-muted" : item.delta >= 0 ? "is-positive" : "is-negative"}">${formatDelta(item.delta)}</strong>
+        <div class="comparison-group" title="${item.label}${item.detail ? ` · ${item.detail}` : ""} · variação: ${formatDelta(item.delta)}${item.delta == null ? "" : ` · ${formatDeltaValue(item.current, item.previous, metric.format)}`}">
+          <strong class="comparison-delta ${item.delta == null ? "is-muted" : item.delta >= 0 ? "is-positive" : "is-negative"}"><span>${formatDelta(item.delta)}</span>${item.delta == null ? "" : `<small>${formatDeltaValue(item.current, item.previous, metric.format)}</small>`}</strong>
           <div class="comparison-pair">
             <span class="comparison-series previous ${item.previous < 0 ? "is-value-negative" : ""}" title="2025: ${formatValue(item.previous, metric.format, false)}"><b>${formatBarValue(item.previous, metric.format, compactLabels)}</b><i style="${barStyle(item.previous, scale)}"></i><small>25</small></span>
             <span class="comparison-series current ${item.current < 0 ? "is-value-negative" : ""}" title="2026: ${formatValue(item.current, metric.format, false)}"><b>${formatBarValue(item.current, metric.format, compactLabels)}</b><i style="${barStyle(item.current, scale)}"></i><small>26</small></span>
@@ -257,7 +270,7 @@
     const height = Math.max(105, Math.round(availableHeight || 150));
     const left = items.length === 1 ? width / 2 : 48;
     const right = items.length === 1 ? width / 2 : width - 48;
-    const graphTop = 30;
+    const graphTop = 38;
     const graphBottom = height - 27;
     const values = items.flatMap((item) => [item.previous, item.current]).filter(Number.isFinite);
     let minimum = Math.min(0, ...values);
@@ -275,7 +288,7 @@
     const zeroY = minimum < 0 && maximum > 0 ? y(0) : null;
 
     return `<svg class="monthly-line-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${metric.label}: comparação mensal de 2025 e 2026">
-      ${items.map((item, index) => `<line class="monthly-line-grid" x1="${x(index)}" y1="20" x2="${x(index)}" y2="${height - 17}"></line>`).join("")}
+      ${items.map((item, index) => `<line class="monthly-line-grid" x1="${x(index)}" y1="28" x2="${x(index)}" y2="${height - 17}"></line>`).join("")}
       ${zeroY == null ? "" : `<line class="monthly-line-zero" x1="28" y1="${zeroY}" x2="${width - 28}" y2="${zeroY}"></line>`}
       <path class="monthly-line previous" d="${path("previous")}"></path>
       <path class="monthly-line current" d="${path("current")}"></path>
@@ -287,8 +300,8 @@
         const previousLabelY = previousY == null ? null : Math.max(24, Math.min(height - 16, previousY + (close && previousY >= currentY ? 13 : -7)));
         const currentLabelY = currentY == null ? null : Math.max(24, Math.min(height - 16, currentY + (close && currentY >= previousY ? 13 : -7)));
         return `<g class="monthly-line-group">
-          <title>${item.label} · 2025: ${formatValue(item.previous, metric.format, false)} · 2026: ${formatValue(item.current, metric.format, false)} · variação: ${formatDelta(item.delta)}</title>
-          <text class="monthly-line-delta ${item.delta == null ? "is-muted" : item.delta >= 0 ? "is-positive" : "is-negative"}" x="${pointX}" y="11">${formatDelta(item.delta)}</text>
+          <title>${item.label} · 2025: ${formatValue(item.previous, metric.format, false)} · 2026: ${formatValue(item.current, metric.format, false)} · variação: ${formatDelta(item.delta)}${item.delta == null ? "" : ` · ${formatDeltaValue(item.current, item.previous, metric.format)}`}</title>
+          <text class="monthly-line-delta ${item.delta == null ? "is-muted" : item.delta >= 0 ? "is-positive" : "is-negative"}" x="${pointX}" y="9"><tspan x="${pointX}">${formatDelta(item.delta)}</tspan>${item.delta == null ? "" : `<tspan class="monthly-line-delta-value" x="${pointX}" dy="9">${formatDeltaValue(item.current, item.previous, metric.format)}</tspan>`}</text>
           ${previousY == null ? "" : `<circle class="monthly-marker previous" cx="${pointX}" cy="${previousY}" r="4.2"></circle><text class="monthly-line-value previous" x="${pointX}" y="${previousLabelY}">${formatValue(item.previous, metric.format)}</text>`}
           ${currentY == null ? "" : `<circle class="monthly-marker current" cx="${pointX}" cy="${currentY}" r="4.2"></circle><text class="monthly-line-value current" x="${pointX}" y="${currentLabelY}">${formatValue(item.current, metric.format)}</text>`}
           <text class="monthly-line-month" x="${pointX}" y="${height - 4}">${item.label}</text>
@@ -308,7 +321,7 @@
       legend.className = "chart-legend";
       header.append(legend);
     }
-    legend.innerHTML = `<span class="legend-previous"><i></i>2025</span><span class="legend-current"><i></i>2026</span><b>Rótulo: variação anual</b>`;
+    legend.innerHTML = `<span class="legend-previous"><i></i>2025</span><span class="legend-current"><i></i>2026</span><b>Rótulo: variação anual (% + valor)</b>`;
   }
 
   function ensureComparisonBody(panel) {
