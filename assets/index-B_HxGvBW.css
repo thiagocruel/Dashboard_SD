@@ -1361,7 +1361,7 @@ button {
   display: grid;
 }
 .comparison-group {
-  grid-template-rows: 14px minmax(0, 1fr) 18px;
+  grid-template-rows: 23px minmax(0, 1fr) 18px;
   min-width: 0;
   gap: 2px;
   display: grid;
@@ -1370,6 +1370,14 @@ button {
   text-align: center;
   white-space: nowrap;
   font-size: 9px;
+  line-height: 1;
+  align-content: start;
+  gap: 1px;
+  display: grid;
+}
+.comparison-delta > small {
+  font-size: 7px;
+  font-weight: 800;
   line-height: 1;
 }
 .comparison-delta.is-positive {
@@ -1447,10 +1455,13 @@ button {
   padding-left: 4px;
 }
 .comparison-columns.is-compact .comparison-group {
-  grid-template-rows: 12px minmax(0, 1fr) 17px;
+  grid-template-rows: 21px minmax(0, 1fr) 17px;
 }
 .comparison-columns.is-compact .comparison-delta {
   font-size: 8.5px;
+}
+.comparison-columns.is-compact .comparison-delta > small {
+  font-size: 6.2px;
 }
 .comparison-columns.is-compact .comparison-series > b {
   font-size: 8px;
@@ -1526,6 +1537,9 @@ button {
 .monthly-line-delta {
   fill: #718391;
   font-size: 9.5px;
+}
+.monthly-line-delta-value {
+  font-size: 7.5px;
 }
 .monthly-line-delta.is-positive {
   fill: var(--green);
