@@ -1,7 +1,7 @@
 (() => {
-  window.__DASHBOARD_COMPARISON_VERSION__ = 8;
+  window.__DASHBOARD_COMPARISON_VERSION__ = 9;
 
-  const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL"];
+  const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO"];
   const METRICS = {
     LITRAGEM: { key: "volume", label: "Litragem", format: "liters" },
     TRANSACOES: { key: "transactions", label: "Transações", format: "integer" },
@@ -29,6 +29,44 @@
 
   const shortName = (value) => String(value || "").replace(/^POSTO SD /, "").replace(/^POSTO /, "");
   const sum = (rows, field) => rows.reduce((total, row) => total + Number(row.actual?.[field] || 0), 0);
+
+  const FINANCIAL_KEYS = new Set(["netProfit", "fuelNetProfit", "storeNetProfit"]);
+
+  function effectiveFinancialMonths(months) {
+    const isFullCommercialPeriod = months.length === 7 && months.every((month, index) => month === index + 1);
+    return isFullCommercialPeriod ? [...months, 8] : months;
+  }
+
+  function financialValue(rows, key) {
+    if (!rows.length) return null;
+    return rows.reduce((total, row) => total + Number(row[key] || 0), 0);
+  }
+
+  function financialRows(companyIds, months) {
+    return (window.DRE_DATA?.records || []).filter((row) => companyIds.includes(row.branchId) && months.includes(row.month));
+  }
+
+  function commonFinancialMonths(rows, months) {
+    return months.filter((month) =>
+      rows.some((row) => row.year === 2025 && row.month === month) &&
+      rows.some((row) => row.year === 2026 && row.month === month));
+  }
+
+  function periodLabel(months) {
+    if (!months.length) return "SEM PERÍODO";
+    const sequential = months.every((month, index) => month === months[0] + index);
+    return sequential && months[0] === 1
+      ? `JAN–${MONTH_NAMES[months[months.length - 1]]}`
+      : months.map((month) => MONTH_NAMES[month]).join(" + ");
+  }
+
+  function formatCardCurrency(value) {
+    if (value == null || !Number.isFinite(value)) return "—";
+    const absolute = Math.abs(value);
+    if (absolute >= 1e6) return `R$ ${(value / 1e6).toFixed(1).replace(".", ",")} mi`;
+    if (absolute >= 1e3) return `R$ ${(value / 1e3).toFixed(1).replace(".", ",")} mil`;
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
+  }
 
   function selectedMonths() {
     const period = normalize(document.querySelector(".selection-summary strong")?.textContent);
@@ -125,6 +163,19 @@
   }
 
   function regularBranchData(data, metric, companyIds, months) {
+    if (FINANCIAL_KEYS.has(metric.key)) {
+      const requestedMonths = effectiveFinancialMonths(months);
+      return data.companies
+        .filter((company) => companyIds.includes(company.id))
+        .map((company) => {
+          const rows = financialRows([company.id], requestedMonths);
+          const comparableMonths = commonFinancialMonths(rows, requestedMonths);
+          const current = financialValue(rows.filter((row) => row.year === 2026 && comparableMonths.includes(row.month)), metric.key);
+          const previous = financialValue(rows.filter((row) => row.year === 2025 && comparableMonths.includes(row.month)), metric.key);
+          return { label: shortName(company.name), detail: company.city, current, previous, delta: variation(current, previous) };
+        })
+        .sort((a, b) => (b.current ?? -Infinity) - (a.current ?? -Infinity));
+    }
     return data.companies
       .filter((company) => companyIds.includes(company.id))
       .map((company) => {
@@ -151,6 +202,15 @@
 
   function monthlyData(data, metric, companyIds, months) {
     if (metric.key === "nps") return null;
+    if (FINANCIAL_KEYS.has(metric.key)) {
+      const requestedMonths = effectiveFinancialMonths(months);
+      const rows = financialRows(companyIds, requestedMonths);
+      return requestedMonths.map((month) => {
+        const current = financialValue(rows.filter((row) => row.year === 2026 && row.month === month), metric.key);
+        const previous = financialValue(rows.filter((row) => row.year === 2025 && row.month === month), metric.key);
+        return { label: MONTH_NAMES[month], current, previous, delta: variation(current, previous) };
+      });
+    }
     if (metric.key === "turnover") {
       const cities = new Set(data.companies.filter((company) => companyIds.includes(company.id)).map((company) => company.city));
       const key = cities.has("FORTALEZA") && (cities.has("SOBRAL") || cities.has("TERESINA"))
@@ -293,13 +353,20 @@
 
     executiveGrid.classList.remove("occupancy-dashboard", "turnover-dashboard");
     executiveGrid.classList.add("comparison-dashboard");
-    const branchTitle = metric.key === "turnover" ? "Turnover por centro de negócio" : `${metric.label} por filial`;
+    const financialWithAugust = FINANCIAL_KEYS.has(metric.key) && effectiveFinancialMonths(months).includes(8);
+    const branchTitle = metric.key === "turnover"
+      ? "Turnover por centro de negócio"
+      : financialWithAugust ? `${metric.label} por filial · base comparável JAN–JUL` : `${metric.label} por filial`;
     const branchEyebrow = metric.key === "turnover" ? "COMPARATIVO POR CENTRO DE NEGÓCIO" : "COMPARATIVO POR FILIAL · ORDENADO POR 2026";
     setPanelHeader(branchPanel, branchEyebrow, branchTitle);
     ensureComparisonBody(branchPanel).innerHTML = comparisonChart(branchItems, metric, branchItems.length > 10);
 
     const monthlyPanel = ensureMonthlyPanel(executiveGrid);
-    setPanelHeader(monthlyPanel, "EVOLUÇÃO MENSAL", `${metric.label} mês a mês`);
+    setPanelHeader(
+      monthlyPanel,
+      "EVOLUÇÃO MENSAL",
+      financialWithAugust ? `${metric.label} mês a mês · AGO/25 aguardando base` : `${metric.label} mês a mês`,
+    );
     const monthlyBody = monthlyPanel.querySelector(".monthly-comparison-chart");
     monthlyBody.innerHTML = monthlyItems === null
       ? `<div class="comparison-empty"><strong>Sem abertura mensal e sem base 2025</strong><span>O NPS disponível está consolidado nos últimos 12 meses.</span></div>`
@@ -308,16 +375,47 @@
 
   function updateFixedCopy() {
     const contentDescription = document.querySelector(".content-heading p");
-    if (contentDescription) contentDescription.textContent = "Os gráficos comparam 2025 × 2026 por filial e por mês.";
+    if (contentDescription) contentDescription.textContent = "Comercial comparável até JUL/26; DRE acumulada até AGO/26. Comparativos anuais usam somente meses presentes nos dois anos.";
     const productivityTitle = document.querySelector(".productivity-card header h3");
     if (productivityTitle) productivityTitle.textContent = "PRODUTIVIDADE";
     const updateStamp = document.querySelector(".update-stamp");
     if (updateStamp) {
       if (updateStamp.querySelector("span")) updateStamp.querySelector("span").textContent = "BASE DE DADOS";
-      if (updateStamp.querySelector("strong")) updateStamp.querySelector("strong").textContent = "Atualizado até julho/26";
+      if (updateStamp.querySelector("strong")) updateStamp.querySelector("strong").textContent = "COMERCIAL JUL/26 · DRE AGO/26 · NPS 12M AGO/26";
     }
     document.querySelectorAll(".primary-button").forEach((button) => {
       if (normalize(button.textContent).includes("EXPORTAR")) button.remove();
+    });
+  }
+
+  function updateFinancialCards() {
+    const data = window.__DASHBOARD_DATA__;
+    if (!data?.companies || !window.DRE_DATA?.records) return;
+    const months = selectedMonths();
+    const requestedMonths = effectiveFinancialMonths(months);
+    const companyIds = selectedCompanyIds(data);
+    const rows = financialRows(companyIds, requestedMonths);
+    const comparableMonths = commonFinancialMonths(rows, requestedMonths);
+    const cardsByKey = new Map(
+      [...document.querySelectorAll(".kpi-card")].map((card) => {
+        const metric = METRICS[normalize(card.querySelector("h3")?.textContent)];
+        return [metric?.key, card];
+      }).filter(([key]) => FINANCIAL_KEYS.has(key)),
+    );
+    FINANCIAL_KEYS.forEach((key) => {
+      const card = cardsByKey.get(key);
+      if (!card) return;
+      const current = financialValue(rows.filter((row) => row.year === 2026), key);
+      const currentComparable = financialValue(rows.filter((row) => row.year === 2026 && comparableMonths.includes(row.month)), key);
+      const previousComparable = financialValue(rows.filter((row) => row.year === 2025 && comparableMonths.includes(row.month)), key);
+      const delta = variation(currentComparable, previousComparable);
+      const value = card.querySelector(":scope > strong");
+      if (value) value.textContent = formatCardCurrency(current);
+      const foot = card.querySelector(".kpi-foot");
+      if (foot) {
+        const deltaClass = delta == null ? "" : delta >= 0 ? "positive" : "negative";
+        foot.innerHTML = `<span>ACUM. 2026 <b>${periodLabel(requestedMonths)}</b></span><span>VS 2025 ${periodLabel(comparableMonths)} <b class="${deltaClass}">${formatDelta(delta)}</b></span>`;
+      }
     });
   }
 
@@ -352,6 +450,7 @@
     requestAnimationFrame(() => {
       scheduled = false;
       updateFixedCopy();
+      updateFinancialCards();
       updateProductivityCard();
       renderCharts();
     });
