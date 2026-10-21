@@ -1,5 +1,5 @@
 (() => {
-  window.__DASHBOARD_COMPARISON_VERSION__ = 11;
+  window.__DASHBOARD_COMPARISON_VERSION__ = 12;
 
   const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO"];
   const METRICS = {
@@ -270,7 +270,7 @@
     const height = Math.max(105, Math.round(availableHeight || 150));
     const left = items.length === 1 ? width / 2 : 48;
     const right = items.length === 1 ? width / 2 : width - 48;
-    const graphTop = 38;
+    const graphTop = 41;
     const graphBottom = height - 27;
     const values = items.flatMap((item) => [item.previous, item.current]).filter(Number.isFinite);
     let minimum = Math.min(0, ...values);
@@ -288,7 +288,7 @@
     const zeroY = minimum < 0 && maximum > 0 ? y(0) : null;
 
     return `<svg class="monthly-line-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${metric.label}: comparação mensal de 2025 e 2026">
-      ${items.map((item, index) => `<line class="monthly-line-grid" x1="${x(index)}" y1="28" x2="${x(index)}" y2="${height - 17}"></line>`).join("")}
+      ${items.map((item, index) => `<line class="monthly-line-grid" x1="${x(index)}" y1="31" x2="${x(index)}" y2="${height - 17}"></line>`).join("")}
       ${zeroY == null ? "" : `<line class="monthly-line-zero" x1="28" y1="${zeroY}" x2="${width - 28}" y2="${zeroY}"></line>`}
       <path class="monthly-line previous" d="${path("previous")}"></path>
       <path class="monthly-line current" d="${path("current")}"></path>
@@ -301,7 +301,7 @@
         const currentLabelY = currentY == null ? null : Math.max(24, Math.min(height - 16, currentY + (close && currentY >= previousY ? 13 : -7)));
         return `<g class="monthly-line-group">
           <title>${item.label} · 2025: ${formatValue(item.previous, metric.format, false)} · 2026: ${formatValue(item.current, metric.format, false)} · variação: ${formatDelta(item.delta)}${item.delta == null ? "" : ` · ${formatDeltaValue(item.current, item.previous, metric.format)}`}</title>
-          <text class="monthly-line-delta ${item.delta == null ? "is-muted" : item.delta >= 0 ? "is-positive" : "is-negative"}" x="${pointX}" y="9"><tspan x="${pointX}">${formatDelta(item.delta)}</tspan>${item.delta == null ? "" : `<tspan class="monthly-line-delta-value" x="${pointX}" dy="9">${formatDeltaValue(item.current, item.previous, metric.format)}</tspan>`}</text>
+          <text class="monthly-line-delta ${item.delta == null ? "is-muted" : item.delta >= 0 ? "is-positive" : "is-negative"}" x="${pointX}" y="9"><tspan x="${pointX}">${formatDelta(item.delta)}</tspan>${item.delta == null ? "" : `<tspan class="monthly-line-delta-value" x="${pointX}" dy="10.5">${formatDeltaValue(item.current, item.previous, metric.format)}</tspan>`}</text>
           ${previousY == null ? "" : `<circle class="monthly-marker previous" cx="${pointX}" cy="${previousY}" r="4.2"></circle><text class="monthly-line-value previous" x="${pointX}" y="${previousLabelY}">${formatValue(item.previous, metric.format)}</text>`}
           ${currentY == null ? "" : `<circle class="monthly-marker current" cx="${pointX}" cy="${currentY}" r="4.2"></circle><text class="monthly-line-value current" x="${pointX}" y="${currentLabelY}">${formatValue(item.current, metric.format)}</text>`}
           <text class="monthly-line-month" x="${pointX}" y="${height - 4}">${item.label}</text>
