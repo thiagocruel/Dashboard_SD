@@ -135,9 +135,12 @@
     const period = [...state.months].sort((a, b) => a - b).map((m) => months[m - 1]).join(" + ") || "Nenhum mês";
     document.querySelector("#scopeSummary").textContent = `${period} · ${selectedBranches.length} posto(s) · ${new Set(selectedBranches.map((b) => b.city)).size} cidade(s)`;
     const alert = document.querySelector("#taxAlert");
-    const show = state.months.has(8) && !data.records.some((row) => row.year === 2025 && row.month === 8);
-    alert.classList.toggle("is-visible", Boolean(show));
-    alert.textContent = show ? "Agosto/2025 ainda não foi recebido. Os acumulados de 2026 incluem agosto; as variações anuais usam somente os meses comparáveis de janeiro a julho." : "";
+    const missingComparable = [...state.months].filter((month) =>
+      data.records.some((row) => row.year === 2026 && row.month === month) &&
+      !data.records.some((row) => row.year === 2025 && row.month === month));
+    const show = missingComparable.length > 0;
+    alert.classList.toggle("is-visible", show);
+    alert.textContent = show ? `Sem base comparativa de 2025 para: ${missingComparable.map((month) => months[month - 1]).join(", ")}.` : "";
   }
 
   function render() { renderScope(); renderCards(); renderTrend(); renderBridge(); renderBranches(); }
