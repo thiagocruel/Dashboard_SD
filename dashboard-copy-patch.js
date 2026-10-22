@@ -1,7 +1,7 @@
 (() => {
-  window.__DASHBOARD_COMPARISON_VERSION__ = 12;
+  window.__DASHBOARD_COMPARISON_VERSION__ = 13;
 
-  const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO"];
+  const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET"];
   const METRICS = {
     LITRAGEM: { key: "volume", label: "Litragem", format: "liters" },
     TRANSACOES: { key: "transactions", label: "Transações", format: "integer" },
@@ -33,8 +33,8 @@
   const FINANCIAL_KEYS = new Set(["netProfit", "fuelNetProfit", "storeNetProfit"]);
 
   function effectiveFinancialMonths(months) {
-    const isFullCommercialPeriod = months.length === 7 && months.every((month, index) => month === index + 1);
-    return isFullCommercialPeriod ? [...months, 8] : months;
+    const latestComparableMonth = Number(window.DRE_DATA?.meta?.latestComparableMonth?.split("-")?.[1] || 8);
+    return months.filter((month) => month <= latestComparableMonth);
   }
 
   function financialValue(rows, key) {
@@ -70,7 +70,7 @@
 
   function selectedMonths() {
     const period = normalize(document.querySelector(".selection-summary strong")?.textContent);
-    if (/JAN.*JUL/.test(period)) return [1, 2, 3, 4, 5, 6, 7];
+    if (/JAN.*SET/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9];
     if (/NENHUM/.test(period)) return [];
     return MONTH_NAMES.map((label, index) => label && new RegExp(`\\b${label}\\b`).test(period) ? index : null).filter(Boolean);
   }
@@ -366,10 +366,12 @@
 
     executiveGrid.classList.remove("occupancy-dashboard", "turnover-dashboard");
     executiveGrid.classList.add("comparison-dashboard");
-    const financialWithAugust = FINANCIAL_KEYS.has(metric.key) && effectiveFinancialMonths(months).includes(8);
+    const financialMonths = effectiveFinancialMonths(months);
+    const financialPeriod = periodLabel(financialMonths);
+    const isFinancial = FINANCIAL_KEYS.has(metric.key);
     const branchTitle = metric.key === "turnover"
       ? "Turnover por centro de negócio"
-      : financialWithAugust ? `${metric.label} por filial · base comparável JAN–AGO` : `${metric.label} por filial`;
+      : isFinancial ? `${metric.label} por filial · base comparável ${financialPeriod}` : `${metric.label} por filial`;
     const branchEyebrow = metric.key === "turnover" ? "COMPARATIVO POR CENTRO DE NEGÓCIO" : "COMPARATIVO POR FILIAL · ORDENADO POR 2026";
     setPanelHeader(branchPanel, branchEyebrow, branchTitle);
     ensureComparisonBody(branchPanel).innerHTML = comparisonChart(branchItems, metric, branchItems.length > 10);
@@ -378,7 +380,7 @@
     setPanelHeader(
       monthlyPanel,
       "EVOLUÇÃO MENSAL",
-      financialWithAugust ? `${metric.label} mês a mês · base comparável JAN–AGO` : `${metric.label} mês a mês`,
+      isFinancial ? `${metric.label} mês a mês · base comparável ${financialPeriod}` : `${metric.label} mês a mês`,
     );
     const monthlyBody = monthlyPanel.querySelector(".monthly-comparison-chart");
     monthlyBody.innerHTML = monthlyItems === null
@@ -388,13 +390,13 @@
 
   function updateFixedCopy() {
     const contentDescription = document.querySelector(".content-heading p");
-    if (contentDescription) contentDescription.textContent = "Comercial até JUL/26; DRE comparável até AGO/26. Comparativos anuais usam os mesmos meses em 2025 e 2026.";
+    if (contentDescription) contentDescription.textContent = "Comercial até SET/26; DRE comparável até AGO/26. Comparativos anuais usam os mesmos meses em 2025 e 2026.";
     const productivityTitle = document.querySelector(".productivity-card header h3");
     if (productivityTitle) productivityTitle.textContent = "PRODUTIVIDADE";
     const updateStamp = document.querySelector(".update-stamp");
     if (updateStamp) {
       if (updateStamp.querySelector("span")) updateStamp.querySelector("span").textContent = "BASE DE DADOS";
-      if (updateStamp.querySelector("strong")) updateStamp.querySelector("strong").textContent = "COMERCIAL JUL/26 · DRE AGO/26 · NPS 12M AGO/26";
+      if (updateStamp.querySelector("strong")) updateStamp.querySelector("strong").textContent = "COMERCIAL SET/26 · DRE AGO/26 · NPS 12M AGO/26 · TURNOVER JUL/26";
     }
     document.querySelectorAll(".primary-button").forEach((button) => {
       if (normalize(button.textContent).includes("EXPORTAR")) button.remove();

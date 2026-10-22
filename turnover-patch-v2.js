@@ -1,5 +1,5 @@
 (() => {
-  window.__TURNOVER_PATCH_VERSION__ = 9;
+  window.__TURNOVER_PATCH_VERSION__ = 10;
 
   const SOURCE = {
     2025: {
@@ -32,7 +32,7 @@
     },
   };
 
-  const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL"];
+  const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET"];
   const normalize = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
   const format = (value) => `${value.toFixed(2).replace(".", ",")}%`;
   const mean = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
@@ -58,7 +58,7 @@
 
   function selectedMonths() {
     const period = normalize(document.querySelector(".selection-summary strong")?.textContent);
-    if (/JAN.*JUL/.test(period)) return [1, 2, 3, 4, 5, 6, 7];
+    if (/JAN.*SET/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9];
     if (/NENHUM/.test(period)) return [];
     return MONTHS.map((label, index) => new RegExp(`\\b${label}\\b`).test(period) ? index + 1 : null).filter(Boolean);
   }
@@ -91,15 +91,17 @@
     if (!card) return;
     card.classList.add("turnover-card");
     const months = selectedMonths();
-    const current = valuesFor(2026, months);
+    const availableMonths = months.filter((month) => TURNOVER[2026].some((row) => row.month === month));
+    const current = valuesFor(2026, availableMonths);
     card.classList.remove("is-pending");
-    setText(card.querySelector("h3"), months.length === 1 ? "Turnover do mês" : "Turnover médio mensal");
+    const hasPendingMonths = availableMonths.length !== months.length;
+    setText(card.querySelector("h3"), months.length === 1 ? "Turnover do mês" : hasPendingMonths ? "Turnover médio · até Jul/26" : "Turnover médio mensal");
     const tone = severity(current.general);
     const indicator = card.querySelector(".kpi-top i");
     if (indicator) indicator.className = tone.className === "positive" ? "good" : tone.className === "negative" ? "bad" : "attention";
-    setText(card.querySelector(":scope > strong"), months.length ? format(current.general) : "—");
+    setText(card.querySelector(":scope > strong"), availableMonths.length ? format(current.general) : "—");
     const foot = card.querySelectorAll(".kpi-foot span");
-    if (months.length) {
+    if (availableMonths.length) {
       setFoot(foot[0], "CN Fortaleza", current.fortaleza);
       setFoot(foot[1], "CN Sobral/Teresina", current.sobralTeresina);
     }

@@ -183,7 +183,7 @@
     const item = [...document.querySelectorAll(".coverage-strip > div")].find((div) => normalize(div.querySelector("span")?.textContent) === "INDICADORES EM IMPLANTACAO");
     if (item) {
       setText(item.querySelector("span"), "COBERTURA ATUAL");
-      setText(item.querySelector("strong"), "17 postos · Jan–Jul/26");
+      setText(item.querySelector("strong"), "17 postos · Comercial Jan–Set/26");
     }
   }
 
