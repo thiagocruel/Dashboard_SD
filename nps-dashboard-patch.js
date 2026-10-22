@@ -175,7 +175,7 @@
     if (!grid || grid.querySelector("[data-nps-method]")) return;
     const article = document.createElement("article");
     article.dataset.npsMethod = "true";
-    article.innerHTML = '<span>08</span><div><strong>NPS estimado — Google</strong><p>Avaliações públicas de 12/08/2025 a 12/08/2026: 5 estrelas = promotor; 4 = neutro; 1 a 3 = detrator. NPS estimado = % promotores − % detratores. Modelo consolida dois perfis do Google; Boa Vizinhança está sem perfil identificável.</p></div>';
+    article.innerHTML = '<span>08</span><div><strong>NPS estimado — Google</strong><p>Avaliações públicas de 01/10/2025 a 30/09/2026: 5 estrelas = promotor; 4 = neutro; 1 a 3 = detrator. NPS estimado = % promotores − % detratores. Modelo consolida dois perfis do Google; Boa Vizinhança está sem perfil identificável.</p></div>';
     grid.append(article);
   }
 
@@ -213,7 +213,7 @@
     event.stopImmediatePropagation();
     const rows = selectedCompanies().map(branchStats);
     const header = ["posto", "cidade", "periodo", "avaliacoes", "media_estrelas", "promotores", "neutros", "detratores", "nps_estimado_google"];
-    const body = rows.map((item) => [item.name, item.city, "12/08/2025 a 12/08/2026", item.reviews, item.averageStars?.toFixed(2) ?? "", item.promoters ?? "", item.neutrals ?? "", item.detractors ?? "", item.nps?.toFixed(1) ?? ""]);
+    const body = rows.map((item) => [item.name, item.city, "01/10/2025 a 30/09/2026", item.reviews, item.averageStars?.toFixed(2) ?? "", item.promoters ?? "", item.neutrals ?? "", item.detractors ?? "", item.nps?.toFixed(1) ?? ""]);
     const csv = [header, ...body].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(";")).join("\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
