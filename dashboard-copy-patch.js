@@ -390,13 +390,13 @@
 
   function updateFixedCopy() {
     const contentDescription = document.querySelector(".content-heading p");
-    if (contentDescription) contentDescription.textContent = "Comercial até SET/26; DRE comparável até AGO/26. Comparativos anuais usam os mesmos meses em 2025 e 2026.";
+    if (contentDescription) contentDescription.style.display = "none";
     const productivityTitle = document.querySelector(".productivity-card header h3");
     if (productivityTitle) productivityTitle.textContent = "PRODUTIVIDADE";
     const updateStamp = document.querySelector(".update-stamp");
     if (updateStamp) {
-      if (updateStamp.querySelector("span")) updateStamp.querySelector("span").textContent = "BASE DE DADOS";
-      if (updateStamp.querySelector("strong")) updateStamp.querySelector("strong").textContent = "COMERCIAL SET/26 · DRE AGO/26 · NPS 12M AGO/26 · TURNOVER JUL/26";
+      if (updateStamp.querySelector("span")) updateStamp.querySelector("span").textContent = "DRE - Dados até Ago/26";
+      if (updateStamp.querySelector("strong")) updateStamp.querySelector("strong").textContent = "Comercial - Dados até Set/26";
     }
     document.querySelectorAll(".primary-button").forEach((button) => {
       if (normalize(button.textContent).includes("EXPORTAR")) button.remove();

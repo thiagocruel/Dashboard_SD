@@ -953,6 +953,37 @@ button {
 /* Exportação removida da visão executiva. */
 .header-actions .primary-button{display:none!important}
 
+/* Cabeçalho executivo compacto: o período selecionado já aparece nos filtros. */
+.topbar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+.top-summary {
+  display: none !important;
+}
+.title-block {
+  min-width: 0;
+}
+.header-actions {
+  min-width: 0;
+}
+.update-stamp {
+  min-width: 166px;
+  gap: 2px;
+  line-height: 1.15;
+}
+.update-stamp span,
+.update-stamp strong {
+  color: var(--navy);
+  white-space: nowrap;
+  letter-spacing: 0;
+  font-size: 9px;
+  font-weight: 800;
+}
+.content-heading p {
+  display: none !important;
+}
+
 /* Produtividade: leitura executiva concentrada na ocupação. */
 .executive-grid.occupancy-dashboard {
   grid-template-columns: 190px minmax(0, 1fr);
