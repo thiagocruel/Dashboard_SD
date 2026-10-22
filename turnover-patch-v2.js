@@ -1,5 +1,5 @@
 (() => {
-  window.__TURNOVER_PATCH_VERSION__ = 10;
+  window.__TURNOVER_PATCH_VERSION__ = 11;
 
   const SOURCE = {
     2025: {
@@ -18,15 +18,15 @@
     },
     2026: {
       fortaleza: {
-        active: [209, 210, 202, 204, 203, 204, 205],
-        admissions: [18, 12, 23, 12, 19, 17, 20],
-        dismissals: [19, 25, 24, 20, 20, 20, 10],
+        active: [209, 210, 202, 204, 203, 204, 205, 189, 187],
+        admissions: [18, 12, 23, 12, 19, 17, 20, 20, 17],
+        dismissals: [19, 25, 24, 20, 20, 20, 10, 17, 23],
         adjustment: 2,
       },
       sobralTeresina: {
-        active: [165, 167, 170, 171, 173, 173, 170],
-        admissions: [8, 11, 12, 7, 10, 3, 11],
-        dismissals: [8, 12, 13, 9, 13, 8, 14],
+        active: [165, 167, 170, 171, 173, 173, 170, 168, 164],
+        admissions: [8, 11, 12, 7, 10, 3, 11, 6, 6],
+        dismissals: [8, 12, 13, 9, 13, 8, 14, 11, 12],
         adjustment: 1,
       },
     },
@@ -95,7 +95,7 @@
     const current = valuesFor(2026, availableMonths);
     card.classList.remove("is-pending");
     const hasPendingMonths = availableMonths.length !== months.length;
-    setText(card.querySelector("h3"), months.length === 1 ? "Turnover do mês" : hasPendingMonths ? "Turnover médio · até Jul/26" : "Turnover médio mensal");
+    setText(card.querySelector("h3"), months.length === 1 ? "Turnover do mês" : hasPendingMonths ? "Turnover médio · período disponível" : "Turnover médio mensal");
     const tone = severity(current.general);
     const indicator = card.querySelector(".kpi-top i");
     if (indicator) indicator.className = tone.className === "positive" ? "good" : tone.className === "negative" ? "bad" : "attention";
