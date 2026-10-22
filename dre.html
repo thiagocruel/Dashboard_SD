@@ -8,6 +8,7 @@
     <meta name="description" content="Resumo consolidado das DREs do Grupo São Domingos." />
     <link rel="icon" href="./favicon.svg" />
     <link rel="stylesheet" href="./dre-dashboard.css?v=2" />
+    <link rel="stylesheet" href="./dre-interactions.css?v=1" />
     <title>Resumo DRE | Grupo São Domingos</title>
   </head>
   <body>
@@ -49,7 +50,7 @@
 
       <section class="dre-grid">
         <article class="dre-panel trend-panel">
-          <header><div><small>EVOLUÇÃO MENSAL</small><h2>Lucro líquido</h2></div><span>R$ por mês</span></header>
+          <header><div><small>EVOLUÇÃO MENSAL</small><h2 id="profitTrendTitle">LUCRO LÍQUIDO GERAL</h2></div><span>R$ por mês</span></header>
           <div id="profitTrend" class="profit-trend"></div>
         </article>
         <article class="dre-panel bridge-panel">
@@ -59,10 +60,10 @@
       </section>
 
       <section class="dre-panel branch-panel">
-        <header><div><small>RANKING FINANCEIRO</small><h2>Resultado por posto</h2></div><span id="branchCount"></span></header>
+        <header><div><small>RANKING FINANCEIRO</small><h2 id="branchPanelTitle">LUCRO LÍQUIDO GERAL POR POSTO</h2></div><span id="branchCount"></span></header>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Posto</th><th>Cidade</th><th>Lucro geral 2026</th><th>Lucro pista 2026</th><th>Lucro loja 2026</th><th>Lucro geral 2025</th><th>Δ anual</th><th>Margem líquida</th></tr></thead>
+            <thead><tr><th>Posto</th><th>Cidade</th><th id="branchMetricCurrent">Lucro líquido geral 2026</th><th id="branchMetricPrevious">Lucro líquido geral 2025</th><th>Variação R$</th><th>Δ anual</th></tr></thead>
             <tbody id="branchBody"></tbody>
           </table>
         </div>
@@ -77,6 +78,6 @@
     </main>
 
     <script src="./dre-data.js?v=5"></script>
-    <script defer src="./dre-dashboard.js?v=4"></script>
+    <script defer src="./dre-dashboard.js?v=5"></script>
   </body>
 </html>

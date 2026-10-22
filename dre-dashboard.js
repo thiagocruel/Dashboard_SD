@@ -3,7 +3,7 @@
   if (!data?.records?.length) return;
 
   const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago"];
-  const state = { city: "ALL", branch: "ALL", months: new Set([1, 2, 3, 4, 5, 6, 7, 8]) };
+  const state = { city: "ALL", branch: "ALL", months: new Set([1, 2, 3, 4, 5, 6, 7, 8]), metric: "netProfit" };
   const metrics = [
     ["revenue", "Faturamento", "Receita total"],
     ["grossProfit", "Lucro bruto", "Após CMV"],
@@ -17,6 +17,7 @@
   const cityFilter = document.querySelector("#cityFilter");
   const branchFilter = document.querySelector("#branchFilter");
   const monthFilters = document.querySelector("#monthFilters");
+  const metricCards = document.querySelector("#metricCards");
   const branches = [...new Map(data.records.map((r) => [r.branchId, { id: r.branchId, name: r.name, city: r.city, number: r.branchNumber, hasStore: r.hasStore }])).values()].sort((a, b) => a.number - b.number);
   const cities = [...new Set(branches.map((b) => b.city))].sort();
 
@@ -41,6 +42,7 @@
       ? `JAN–${months[ordered[ordered.length - 1] - 1].toUpperCase()}`
       : ordered.map((month) => months[month - 1].toUpperCase()).join(" + ");
   };
+  const activeMetric = () => metrics.find(([key]) => key === state.metric) || metrics[3];
 
   function populateFilters() {
     cityFilter.insertAdjacentHTML("beforeend", cities.map((city) => `<option value="${city}">${city[0]}${city.slice(1).toLowerCase()}</option>`).join(""));
@@ -60,7 +62,7 @@
     const current = selected(2026);
     const currentComparable = selected(2026, null, comparableMonths);
     const previous = selected(2025, null, comparableMonths);
-    document.querySelector("#metricCards").innerHTML = metrics.map(([key, label, detail], index) => {
+    metricCards.innerHTML = metrics.map(([key, label, detail], index) => {
       const value = sum(current, key);
       const prior = sum(previous, key);
       const change = delta(sum(currentComparable, key), prior);
@@ -68,7 +70,8 @@
       let extra = detail;
       if (key === "grossProfit" && sum(current, "revenue")) extra = `Margem ${(value / sum(current, "revenue") * 100).toFixed(1).replace(".", ",")}%`;
       if (key === "netProfit" && sum(current, "revenue")) extra = `Margem ${(value / sum(current, "revenue") * 100).toFixed(1).replace(".", ",")}%`;
-      return `<article class="dre-card"><header><small>0${index + 1}</small><i></i></header><h2>${label}</h2><strong>${money(value, true)}</strong><footer><span>2025 ${periodShort(comparableMonths)} <b>${money(prior, true)}</b></span><b class="${tone}">${percent(change)}</b></footer><small>${extra}</small></article>`;
+      const isSelected = state.metric === key;
+      return `<button class="dre-card${isSelected ? " is-selected" : ""}" type="button" data-metric="${key}" aria-pressed="${isSelected}"><header><small>0${index + 1}</small><i></i></header><h2>${label.toUpperCase()}</h2><strong>${money(value, true)}</strong><footer><span>2025 ${periodShort(comparableMonths)} <b>${money(prior, true)}</b></span><b class="${tone}">${percent(change)}</b></footer><small>${extra}</small></button>`;
     }).join("");
   }
 
@@ -86,6 +89,8 @@
   }
 
   function renderTrend() {
+    const [, metricLabel] = activeMetric();
+    document.querySelector("#profitTrendTitle").textContent = metricLabel.toUpperCase();
     const values = months.map((_, index) => {
       const month = index + 1;
       const base = (year) => data.records.filter((r) => r.year === year && r.month === month && (state.city === "ALL" || r.city === state.city) && (state.branch === "ALL" || String(r.branchId) === state.branch));
@@ -93,8 +98,8 @@
       const previousRows = base(2025);
       return {
         month,
-        current: currentRows.length ? sum(currentRows, "netProfit") : null,
-        previous: previousRows.length ? sum(previousRows, "netProfit") : null,
+        current: currentRows.length ? sum(currentRows, state.metric) : null,
+        previous: previousRows.length ? sum(previousRows, state.metric) : null,
       };
     }).filter((row) => state.months.has(row.month));
     const finiteValues = values.flatMap((row) => [row.current, row.previous]).filter(Number.isFinite);
@@ -118,15 +123,23 @@
 
   function renderBranches() {
     const comparableMonths = comparableMonthSet();
+    const [metricKey, metricLabel] = activeMetric();
+    const storeMetric = metricKey === "storeNetProfit" || metricKey === "storeRevenue";
     const branchRows = branches.filter((branch) => (state.city === "ALL" || branch.city === state.city) && (state.branch === "ALL" || String(branch.id) === state.branch)).map((branch) => {
       const r26 = selected(2026, branch.id), r26Comparable = selected(2026, branch.id, comparableMonths), r25 = selected(2025, branch.id, comparableMonths);
-      return { branch, net26: sum(r26, "netProfit"), net26Comparable: sum(r26Comparable, "netProfit"), net25: sum(r25, "netProfit"), revenue26: sum(r26, "revenue"), fuel26: sum(r26, "fuelNetProfit"), store26: sum(r26, "storeNetProfit") };
-    }).sort((a, b) => b.net26 - a.net26);
+      return { branch, value26: sum(r26, metricKey), value26Comparable: sum(r26Comparable, metricKey), value25: sum(r25, metricKey) };
+    }).sort((a, b) => b.value26 - a.value26);
+    document.querySelector("#branchPanelTitle").textContent = `${metricLabel.toUpperCase()} POR POSTO`;
+    document.querySelector("#branchMetricCurrent").textContent = `${metricLabel} 2026`;
+    document.querySelector("#branchMetricPrevious").textContent = `${metricLabel} 2025`;
     document.querySelector("#branchCount").textContent = `${branchRows.length} posto(s)`;
     document.querySelector("#branchBody").innerHTML = branchRows.map((row) => {
-      const change = delta(row.net26Comparable, row.net25), margin = row.revenue26 ? row.net26 / row.revenue26 * 100 : null;
+      const unavailable = storeMetric && !row.branch.hasStore;
+      const change = unavailable ? null : delta(row.value26Comparable, row.value25);
+      const difference = unavailable ? null : row.value26Comparable - row.value25;
       const tone = change == null ? "" : change >= 0 ? "delta-positive" : "delta-negative";
-      return `<tr><td>${String(row.branch.number).padStart(2, "0")} · ${shortName(row.branch.name)}</td><td>${row.branch.city[0]}${row.branch.city.slice(1).toLowerCase()}</td><td>${money(row.net26)}</td><td>${money(row.fuel26)}</td><td>${row.branch.hasStore ? money(row.store26) : "—"}</td><td>${money(row.net25)}</td><td class="${tone}">${percent(change)}</td><td>${margin == null ? "—" : `${margin.toFixed(1).replace(".", ",")}%`}</td></tr>`;
+      const differenceTone = difference == null ? "" : difference >= 0 ? "delta-positive" : "delta-negative";
+      return `<tr><td>${String(row.branch.number).padStart(2, "0")} · ${shortName(row.branch.name)}</td><td>${row.branch.city[0]}${row.branch.city.slice(1).toLowerCase()}</td><td>${unavailable ? "—" : money(row.value26)}</td><td>${unavailable ? "—" : money(row.value25)}</td><td class="${differenceTone}">${difference == null ? "—" : money(difference)}</td><td class="${tone}">${percent(change)}</td></tr>`;
     }).join("");
   }
 
@@ -147,6 +160,12 @@
   cityFilter.addEventListener("change", () => { state.city = cityFilter.value; updateBranchOptions(); render(); });
   branchFilter.addEventListener("change", () => { state.branch = branchFilter.value; render(); });
   monthFilters.addEventListener("change", (event) => { const month = Number(event.target.value); event.target.checked ? state.months.add(month) : state.months.delete(month); render(); });
+  metricCards.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-metric]");
+    if (!card || card.dataset.metric === state.metric) return;
+    state.metric = card.dataset.metric;
+    render();
+  });
   document.querySelector("#resetFilters").addEventListener("click", () => { state.city = "ALL"; state.branch = "ALL"; state.months = new Set([1, 2, 3, 4, 5, 6, 7, 8]); cityFilter.value = "ALL"; monthFilters.querySelectorAll("input").forEach((input) => input.checked = true); updateBranchOptions(); render(); });
 
   populateFilters();

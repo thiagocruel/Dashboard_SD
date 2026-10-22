@@ -1,0 +1,33 @@
+/* Cards interativos e títulos de indicadores padronizados. */
+.dre-card {
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .18s, box-shadow .18s, transform .18s;
+}
+
+.dre-card:hover {
+  border-color: #8ebcab;
+  box-shadow: 0 13px 30px rgba(23, 39, 60, .09);
+  transform: translateY(-1px);
+}
+
+.dre-card:focus-visible {
+  outline: 3px solid rgba(12, 118, 82, .22);
+  outline-offset: 2px;
+}
+
+.dre-card.is-selected {
+  border-color: #0c7652;
+  box-shadow: 0 0 0 2px rgba(12, 118, 82, .14), 0 13px 30px rgba(23, 39, 60, .08);
+}
+
+.dre-card h2,
+.dre-panel h2 {
+  text-transform: uppercase;
+}
+
+.dre-card footer {
+  width: 100%;
+}
