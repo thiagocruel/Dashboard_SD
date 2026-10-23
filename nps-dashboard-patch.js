@@ -175,7 +175,7 @@
     if (!grid) return;
     const copy = "Avaliações públicas de 01/10/2025 a 30/09/2026: 5 estrelas = promotor; 4 = neutro; 1 a 3 = detrator. NPS estimado = % promotores − % detratores. Modelo consolida dois perfis do Google; Boa Vizinhança está sem perfil identificável.";
     const existing = [...grid.querySelectorAll("article")].find((item) =>
-      normalize(item.querySelector("strong")?.textContent) === "NPS ESTIMADO GOOGLE",
+      normalize(item.querySelector("strong")?.textContent).startsWith("NPS ESTIMADO"),
     );
     if (existing) {
       existing.dataset.npsMethod = "true";
