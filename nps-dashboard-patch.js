@@ -2,6 +2,8 @@
   const source = window.__NPS_GOOGLE_12M__;
   if (!source) return;
 
+  const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET"];
+
   const companies = [
     { id: 3946, name: "POSTO SD ARCO", city: "SOBRAL" },
     { id: 3947, name: "POSTO SD GLORIMAR", city: "SOBRAL" },
@@ -38,8 +40,35 @@
     return companies.filter((company) => selectedCities.includes(company.city) && selectedCompanyIds.includes(company.id));
   }
 
-  function aggregate(scope) {
-    const stats = scope.map((company) => source.branches[company.id]).filter(Boolean);
+  function selectedMonths() {
+    const period = normalize(document.querySelector(".selection-summary strong")?.textContent);
+    if (!period || /JAN.*SET/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    if (/NENHUM/.test(period)) return [];
+    return MONTH_NAMES.map((label, index) => label && new RegExp(`\\b${label}\\b`).test(period) ? index : null).filter(Boolean);
+  }
+
+  function periodLabel(months) {
+    if (!months.length) return "SEM MÊS";
+    const sequential = months.every((month, index) => month === months[0] + index);
+    return sequential && months[0] === 1
+      ? `JAN–${MONTH_NAMES[months[months.length - 1]]}/26`
+      : `${months.map((month) => MONTH_NAMES[month]).join(" + ")}/26`;
+  }
+
+  function statsForCompany(companyId, months = selectedMonths()) {
+    const stats = months.map((month) => source.months?.[month]?.[companyId]).filter(Boolean);
+    const sum = (key) => stats.reduce((total, item) => total + Number(item[key] || 0), 0);
+    return {
+      reviews: sum("reviews"),
+      promoters: sum("promoters"),
+      neutrals: sum("neutrals"),
+      detractors: sum("detractors"),
+      starsSum: sum("starsSum"),
+    };
+  }
+
+  function aggregate(scope, months = selectedMonths()) {
+    const stats = scope.map((company) => statsForCompany(company.id, months)).filter((item) => item.reviews);
     const sum = (key) => stats.reduce((total, item) => total + item[key], 0);
     const reviews = sum("reviews");
     const promoters = sum("promoters");
@@ -55,9 +84,9 @@
     };
   }
 
-  function branchStats(company) {
-    const item = source.branches[company.id];
-    if (!item) return { ...company, reviews: 0, nps: null, averageStars: null };
+  function branchStats(company, months = selectedMonths()) {
+    const item = statsForCompany(company.id, months);
+    if (!item.reviews) return { ...company, ...item, nps: null, averageStars: null };
     return {
       ...company,
       ...item,
@@ -98,15 +127,16 @@
     if (!card) return;
     card.classList.add("nps-card");
     const scope = selectedCompanies();
+    const months = selectedMonths();
     window.__DASHBOARD_FILTER_SCOPE__ = { companyIds: scope.map((company) => company.id) };
-    const stats = aggregate(scope);
+    const stats = aggregate(scope, months);
     setText(card.querySelector("h3"), "NPS estimado — Google");
     card.classList.toggle("is-pending", stats.nps == null);
     const dot = card.querySelector(".kpi-top i");
     if (dot) dot.className = stats.nps == null ? "neutral" : stats.nps >= 0 ? "good" : "bad";
     setText(card.querySelector(":scope > strong"), formatNps(stats.nps));
     const foot = card.querySelectorAll(".kpi-foot span");
-    setFoot(foot[0], "12 meses", `${stats.reviews} avaliações`);
+    setFoot(foot[0], periodLabel(months), `${stats.reviews} avaliações`);
     setFoot(foot[1], "Google Maps", `${stats.profiles}/${scope.length} perfis`);
   }
 
@@ -153,7 +183,7 @@
     }
 
     setText(panel.querySelector(".panel-header h3"), "NPS estimado — Google");
-    setText(panel.querySelector(".chart-legend span"), "12 meses");
+    setText(panel.querySelector(".chart-legend span"), periodLabel(selectedMonths()));
     setText(panel.querySelector(".chart-legend b"), "nº avaliações");
     if (reactChart) reactChart.style.display = "none";
     if (!custom) {
@@ -173,7 +203,7 @@
   function updateMethodology() {
     const grid = document.querySelector(".method-modal .formula-grid");
     if (!grid) return;
-    const copy = "Avaliações públicas de 01/10/2025 a 30/09/2026: 5 estrelas = promotor; 4 = neutro; 1 a 3 = detrator. NPS estimado = % promotores − % detratores. Modelo consolida dois perfis do Google; Boa Vizinhança está sem perfil identificável.";
+    const copy = "Avaliações públicas mensais de 01/01/2026 a 30/09/2026, conforme os meses selecionados: 5 estrelas = promotor; 4 = neutro; 1 a 3 = detrator. NPS estimado = % promotores − % detratores. Modelo consolida dois perfis do Google; Boa Vizinhança está sem perfil identificável.";
     const existing = [...grid.querySelectorAll("article")].find((item) =>
       normalize(item.querySelector("strong")?.textContent).startsWith("NPS ESTIMADO"),
     );
@@ -220,14 +250,15 @@
     if (!card?.classList.contains("selected")) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    const rows = selectedCompanies().map(branchStats);
+    const months = selectedMonths();
+    const rows = selectedCompanies().map((company) => branchStats(company, months));
     const header = ["posto", "cidade", "periodo", "avaliacoes", "media_estrelas", "promotores", "neutros", "detratores", "nps_estimado_google"];
-    const body = rows.map((item) => [item.name, item.city, "01/10/2025 a 30/09/2026", item.reviews, item.averageStars?.toFixed(2) ?? "", item.promoters ?? "", item.neutrals ?? "", item.detractors ?? "", item.nps?.toFixed(1) ?? ""]);
+    const body = rows.map((item) => [item.name, item.city, periodLabel(months), item.reviews, item.averageStars?.toFixed(2) ?? "", item.promoters ?? "", item.neutrals ?? "", item.detractors ?? "", item.nps?.toFixed(1) ?? ""]);
     const csv = [header, ...body].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(";")).join("\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = "nps-estimado-google-12-meses.csv";
+    link.download = "nps-estimado-google-mensal-2026.csv";
     link.click();
     URL.revokeObjectURL(url);
   }

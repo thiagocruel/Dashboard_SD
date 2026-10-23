@@ -164,9 +164,16 @@
     return `${sign}${compactNumber(absolute)}`;
   }
 
-  function npsForCompany(companyId) {
-    const item = window.__NPS_GOOGLE_12M__?.branches?.[companyId];
-    return item?.reviews ? (item.promoters - item.detractors) / item.reviews * 100 : null;
+  function npsStats(companyIds, months) {
+    const items = months.flatMap((month) => companyIds.map((companyId) => window.__NPS_GOOGLE_12M__?.months?.[month]?.[companyId])).filter(Boolean);
+    const reviews = items.reduce((total, item) => total + item.reviews, 0);
+    const promoters = items.reduce((total, item) => total + item.promoters, 0);
+    const detractors = items.reduce((total, item) => total + item.detractors, 0);
+    return { reviews, nps: reviews ? (promoters - detractors) / reviews * 100 : null };
+  }
+
+  function npsForCompany(companyId, months) {
+    return npsStats([companyId], months).nps;
   }
 
   function turnoverAverage(year, months, key) {
@@ -193,7 +200,7 @@
       .filter((company) => companyIds.includes(company.id))
       .map((company) => {
         const rows = data.rows.filter((row) => months.includes(row.month) && row.companyId === company.id);
-        const current = metric.key === "nps" ? npsForCompany(company.id) : metricValue(rows.filter((row) => row.year === 2026), metric.key);
+        const current = metric.key === "nps" ? npsForCompany(company.id, months) : metricValue(rows.filter((row) => row.year === 2026), metric.key);
         const previous = metric.key === "nps" ? null : metricValue(rows.filter((row) => row.year === 2025), metric.key);
         return { label: shortName(company.name), detail: company.city, current, previous, delta: variation(current, previous) };
       })
@@ -214,7 +221,14 @@
   }
 
   function monthlyData(data, metric, companyIds, months) {
-    if (metric.key === "nps") return null;
+    if (metric.key === "nps") {
+      return months.map((month) => ({
+        label: MONTH_NAMES[month],
+        current: npsStats(companyIds, [month]).nps,
+        previous: null,
+        delta: null,
+      }));
+    }
     if (FINANCIAL_KEYS.has(metric.key)) {
       const requestedMonths = effectiveFinancialMonths(months);
       const rows = financialRows(companyIds, requestedMonths);
