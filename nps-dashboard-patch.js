@@ -172,10 +172,19 @@
 
   function updateMethodology() {
     const grid = document.querySelector(".method-modal .formula-grid");
-    if (!grid || grid.querySelector("[data-nps-method]")) return;
+    if (!grid) return;
+    const copy = "Avaliações públicas de 01/10/2025 a 30/09/2026: 5 estrelas = promotor; 4 = neutro; 1 a 3 = detrator. NPS estimado = % promotores − % detratores. Modelo consolida dois perfis do Google; Boa Vizinhança está sem perfil identificável.";
+    const existing = [...grid.querySelectorAll("article")].find((item) =>
+      normalize(item.querySelector("strong")?.textContent) === "NPS ESTIMADO GOOGLE",
+    );
+    if (existing) {
+      existing.dataset.npsMethod = "true";
+      setText(existing.querySelector("p"), copy);
+      return;
+    }
     const article = document.createElement("article");
     article.dataset.npsMethod = "true";
-    article.innerHTML = '<span>08</span><div><strong>NPS estimado — Google</strong><p>Avaliações públicas de 01/10/2025 a 30/09/2026: 5 estrelas = promotor; 4 = neutro; 1 a 3 = detrator. NPS estimado = % promotores − % detratores. Modelo consolida dois perfis do Google; Boa Vizinhança está sem perfil identificável.</p></div>';
+    article.innerHTML = `<span>08</span><div><strong>NPS estimado — Google</strong><p>${copy}</p></div>`;
     grid.append(article);
   }
 
