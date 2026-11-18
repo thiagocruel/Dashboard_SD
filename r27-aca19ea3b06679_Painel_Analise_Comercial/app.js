@@ -116,9 +116,64 @@ function renderPortraits() {
   $("portraits").innerHTML=profile.items.map(item=>`<article class="portrait">
     <span class="tag">${html(item.time)}</span><h3>${html(item.name)}</h3>
     <p>${html(item.description)}</p><p class="evidence">${html(item.evidence)}</p></article>`).join("");
-  $("actions").innerHTML=storeActions[$("store").value].map(item=>`<article class="portrait action-card">
-    <span class="tag">${html(item.when)}</span><h3>${html(item.title)}</h3><p>${html(item.description)}</p>
-    <p class="evidence"><strong>Como medir</strong><br>${html(item.indicator)}</p></article>`).join("");
+}
+
+let storeObservationRequest=0;
+async function storeObservations() {
+  const version=++storeObservationRequest;
+  const year=source.year;
+  const units=source.units.slice(), months=[...selection.months], days=[...selection.days];
+  const card=(name,body)=>`<article class="portrait"><h3>${html(name)}</h3><p>${html(body)}</p></article>`;
+  const strongest=counts=>counts.reduce((best,n,i)=>n>counts[best]?i:best,0);
+  const occasions={
+    "FOOD":"uma parada para comer algo pronto",
+    "BEBIDAS ALCOOLICAS GELADAS":"a compra de bebida gelada para levar",
+    "BEBIDAS NAO ALCOOLICAS":"uma parada para pegar uma bebida",
+    "CIGARROS":"a passagem pela loja para comprar cigarros",
+    "BOMBONIERE":"a compra rápida de um doce",
+    "MERCEARIA":"a compra de itens de mercearia"
+  };
+  try {
+    const sections=await Promise.all(units.map(async unit=>{
+      const [basket,sales,pista,index]=await Promise.all([fetchBasketGroups(unit,year),fetchSource(unit+"-"+year),fetchSource("pista-"+unit+"-"+year),fetchSource("pista-index")]);
+      const cats=basket.categories, counts=cats.map(()=>0);
+      let receipts=0;
+      const slots=months.flatMap(m=>days.map(d=>m*7+d));
+      for(const slot of slots)for(const [mask,n] of basket.slots[slot]){
+        receipts+=n;cats.forEach((_,i)=>{if(mask&(1<<i))counts[i]+=n;});
+      }
+      const first=strongest(counts),category=cats[first],pairs=cats.map(()=>0);
+      let alone=0;
+      for(const slot of slots)for(const [mask,n] of basket.slots[slot]){
+        if(mask===(1<<first))alone+=n;
+        if(mask&(1<<first))cats.forEach((_,i)=>{if(i!==first&&(mask&(1<<i)))pairs[i]+=n;});
+      }
+      const second=strongest(pairs),time=Array(168).fill(0),products=new Map(),dayCounts=Array(7).fill(0);
+      for(const m of months){
+        const block=sales.months[m];
+        for(const d of days)dayCounts[d]+=block.days[d];
+        for(const [slot,pid,qty,revenue] of block.rows){
+          const d=Math.floor(slot/24);
+          if(!days.includes(d)||sales.categories[sales.products[pid][0]]!==category)continue;
+          time[slot]+=revenue;
+          products.set(pid,(products.get(pid)||0)+qty);
+        }
+      }
+      const peak=strongest(time.map((v,i)=>v/(dayCounts[Math.floor(i/24)]||1)));
+      const best=[...products].sort((a,b)=>b[1]-a[1])[0];
+      const fuels=new Map();
+      for(const m of months)for(const [,,pid,qty] of pista[m].clients)fuels.set(pid,(fuels.get(pid)||0)+qty);
+      const main=[...fuels].sort((a,b)=>b[1]-a[1])[0], total=[...fuels.values()].reduce((a,b)=>a+b,0);
+      const diesel=main&&index.products[main[0]][1].includes("DIESEL");
+      const fleet=main?`Entre os clientes cadastrados na pista, ${formatPct.format(main[1]*100/total)}% dos litros cadastrados são de ${index.products[main[0]][1].toLowerCase()}. Esse público pode incluir ${diesel?"motoristas em serviço que fazem paradas de rota":"equipes que circulam em veículos leves"}. Os cupons da loja não identificam o convênio.`:"Sem compras de carteira identificadas na pista para este recorte.";
+      const trial=diesel?"Teste com uma frota da unidade a retirada de água e lanche durante o abastecimento.":"Teste um vale-lanche com uma empresa que já abastece na unidade.";
+      const partner=pairs[second]?categoryLabel(cats[second]).toLowerCase():null;
+      const profile=receipts?`A ocasião mais visível é ${occasions[category]||"a procura por "+categoryLabel(category).toLowerCase()}. A categoria aparece em ${formatPct.format(100*counts[first]/receipts)}% dos cupons da loja.${best?" Entre esses produtos, "+sales.products[best[0]][1].toLowerCase()+" lidera em unidades.":""} Em ${formatPct.format(100*alone/counts[first])}% dos cupons com essa categoria, a compra termina ali, sem levar outra categoria. Na média por dia observado, a faixa de maior faturamento é ${dayNames[Math.floor(peak/24)].toLowerCase()} às ${peak%24}h.`:"Sem cupons nos dias e meses selecionados.";
+      const action=receipts&&partner?`Deixe ${partner} junto à oferta de ${categoryLabel(category).toLowerCase()} antes das ${peak%24}h. Hoje, de cada 100 cupons com essa categoria, ${formatNum.format(Math.round(100*pairs[second]/counts[first]))} também levam ${partner}. Compare a venda conjunta e o lucro do par durante o teste.`:"Aguarde um recorte com compras conjuntas antes de montar uma oferta.";
+      return `<details class="observ-unit" ${units.length===1?"open":""}><summary>${html(storeNames[unit])}</summary><div class="observ-cards">${card("Perfil Clientes/Frotistas",fleet)}${card("Sugestões para esses clientes",trial+" Identifique os resgates por convênio para medir a adesão.")}${card("Perfil Clientes Passantes",profile)}${card("Sugestões para esses clientes",action)}</div></details>`;
+    }));
+    if(version===storeObservationRequest)$("actions").innerHTML=sections.join("");
+  } catch(error){if(version===storeObservationRequest)$("actions").textContent="Não foi possível carregar as observações deste recorte.";}
 }
 
 async function fetchSource(key) {
@@ -374,6 +429,7 @@ function render() {
     (focus===null || row.id===focus)
   );
   current=currentRows.length===currentRanking.length?base:aggregate(new Set(currentRows.map(row=>row.id)));
+  storeObservations();
   renderKpis(current);
   renderUnitTotals(current);
   renderCharts(current);

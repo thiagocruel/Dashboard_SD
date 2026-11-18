@@ -25,7 +25,7 @@ window.pista = (() => {
   let selectedMonths = new Set(sequence(10));
   let selectedDays = new Set(sequence(7));
   const selectedGroups = new Set([0]);
-  let detail, trocas;
+  let detail, trocas, compras;
 
   function data(file) {
     if (elements.has(file)) return elements.get(file);
@@ -123,6 +123,7 @@ window.pista = (() => {
       get("collapse").textContent=hide?"Expandir":"Recolher";
     });
     get("retry").addEventListener("click",()=>{if (ready) load(); else activate();});
+    get("trocas-measure").addEventListener("change",()=>drawTrocas(state));
     get("trocas-category").addEventListener("change",()=>drawTrocas(state));
     ready=true;
   }
@@ -130,7 +131,7 @@ window.pista = (() => {
   async function activate() {
     if (ready) return;
     try {
-      [catalog,detail,trocas]=await Promise.all([data("pista-index"),data("pista-detail"),data("pista-trocas")]);
+      [catalog,detail,trocas,compras]=await Promise.all([data("pista-index"),data("pista-detail"),data("pista-trocas"),data("pista-compras")]);
       if(ready) return;
       bind();
       await load();
@@ -441,80 +442,117 @@ window.pista = (() => {
   function largest(map) {
     return [...map].filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
   }
-  function observationsForUnit(unit,year,months) {
-    const portfolio=new Map(), residual=new Map(), accounts=new Map(), excluded=[];
-    const add=(map,key,n)=>map.set(key,(map.get(key)||0)+n);
-    for(const month of months) {
-      const rec=unit[year][month];
-      if(!rec.days.some(Boolean)) continue;
-      const balance=new Map(rec.fuel);
-      for(const [,index,pid,qty] of rec.clients) {
-        add(portfolio,pid,qty);
-        add(balance,pid,-qty);
-        const key=keyText(current.names[year][index]).trim();
-        if(!accounts.has(key)) accounts.set(key,{months:new Set(),qty:0});
-        const account=accounts.get(key);
-        if(qty>0) account.months.add(month);
-        account.qty+=qty;
-      }
-      if([...balance.values()].some(v=>v<0)||!rec.complete||!rec.clients.length) excluded.push(monthLabels[month]);
-      else for(const [pid,qty] of balance) add(residual,pid,qty);
+  function pricePattern(rows,pid) {
+    // Pair cheaper and dearer dates within the same month and weekday.
+    const strata=new Map();
+    for(const [m,d,p,q,v,n] of rows) {
+      if(p!==pid||!selectedMonths.has(m)||!selectedDays.has(d)||q<=0||n<=0)continue;
+      const k=m*7+d;
+      if(!strata.has(k))strata.set(k,[]);
+      strata.get(k).push({price:v/q,n});
     }
-    const fuelName=pid=>fuelLabel(catalog.products[pid][1]);
-    const total=map=>[...map.values()].reduce((a,b)=>a+b,0);
-    const best=largest(portfolio);
-    const repeat=[...accounts.values()].filter(a=>a.months.size>=2);
-    const recurrentVolume=repeat.reduce((sum,a)=>sum+a.qty,0);
-    const fleet=best?portrait("Cliente/Frotista",
-      `A carteira de clientes e convênios comprou ${liters(total(portfolio)/100)}. De cada 100 litros, cerca de ${integer.format(100*best[1]/total(portfolio))} foram de ${fuelName(best[0])}.`+
-      (months.length>1?` Os cadastros que voltaram em pelo menos dois meses responderam por ${pp(ratio(recurrentVolume,total(portfolio)))} dos litros da carteira.`:""),
-      `Para manter a carteira, acompanhe os cadastros que abastecem todo mês e procure os que reduziram as compras. Para prospectar, comece por ${/diesel/i.test(fuelName(best[0]))?"operações com veículos a diesel":"empresas com veículos leves"} que circulam pela região e usam ${fuelName(best[0])} com frequência.`):
-      portrait("Cliente/Frotista","Sem compras identificadas da carteira nos meses selecionados.","");
-    const pass=largest(residual);
-    const scope=excluded.length?` Fora da estimativa por cobertura incompleta ou diferença entre as bases: ${excluded.join(", ")}.`:"";
-    const passText=pass?`Estimamos ${liters(total(residual)/100)} vendidos ao público passante, descontando a carteira das vendas do posto. O combustível com mais litros foi ${fuelName(pass[0])} (${pp(ratio(pass[1],total(residual)))}).`:
-      "Os meses selecionados não permitem estimar a composição dos passantes.";
-    const rows=detailRows(unit.slug,year,p=>p>=0&&catalog.products[p][0]===0);
-    function pattern(family) {
-      const grouped=[new Map(),new Map()];
-      for(const [,day,h,p,qty,sales,tx] of rows) {
-        if(!catalog.products[p][1].startsWith(family)) continue;
-        const group=grouped[Number(day>=5)];
-        if(!group.has(p)) group.set(p,{qty:0,sales:0,tx:0,hours:Array(24).fill(0)});
-        const v=group.get(p); v.qty+=qty;v.sales+=sales;v.tx+=tx;if(h>=0)v.hours[h]+=tx;
+    let pairs=0,spread=0,lowCount=0,highCount=0;
+    for(const days of strata.values()){
+      days.sort((a,b)=>a.price-b.price);
+      for(let i=0;i<Math.floor(days.length/2);i++){
+        const a=days[i],b=days[days.length-1-i];
+        if(b.price-a.price<0.01)continue;
+        pairs++;spread+=b.price-a.price;lowCount+=a.n;highCount+=b.n;
       }
-      const overall=new Map();
-      for(const group of grouped) for(const [pid,v] of group) add(overall,pid,v.qty);
-      const leader=largest(overall);
-      if(!leader)return "";
-      const pid=leader[0], name=fuelName(pid);
-      const [wk,we]=grouped.map(g=>g.get(pid));
-      if(!wk?.tx||!we?.tx)return `O produto de maior volume nessa família foi ${name}. A seleção de dias não permite comparar os dois períodos.`;
-      const pct=(g,v)=>pp(ratio(v.qty,[...g.values()].reduce((a,b)=>a+b.qty,0)));
-      const ticketA=wk.sales/wk.tx,ticketB=we.sales/we.tx;
-      const peak=v=>v.hours.indexOf(Math.max(...v.hours));
-      const delta=growth(ticketB,ticketA);
-      const diff=delta===null?"":Math.abs(delta)<0.0005?" (praticamente igual)":` (${pp(Math.abs(delta))} ${delta>0?"maior":"menor"})`;
-      const basket=we.qty/we.tx-wk.qty/wk.tx;
-      const reading=Math.abs(basket)<0.05?"O volume médio por abastecimento praticamente se manteve.":`Quem abasteceu com ${name} no fim de semana levou, em média, ${liters(Math.abs(basket))} a ${basket>0?"mais":"menos"} por compra.`;
-      return `${reading} A participação de ${name} nos litros de ${family==="GASOLINA"?"gasolina":"diesel"} foi de ${pct(grouped[0],wk)} de segunda a sexta e ${pct(grouped[1],we)} no fim de semana. Nesse produto, o gasto médio passou de ${cash.format(ticketA)} para ${cash.format(ticketB)}${diff}. O preço médio por litro foi de ${cash.format(wk.sales/wk.qty)} e ${cash.format(we.sales/we.qty)}, respectivamente. A hora com mais registros foi ${peak(wk)}h nos dias úteis e ${peak(we)}h no fim de semana.`;
     }
-    const gas=pattern("GASOLINA"),diesel=pattern("DIESEL");
-    const actions={
-      arco:"No centro, teste uma oferta de aditivada no horário de maior movimento da gasolina e acompanhe quantos abastecimentos mudam de produto.",
-      glorimar:"Na área central, ajuste a cobertura ao pico da gasolina e acompanhe se o ticket e o tempo de espera mudam.",
-      coracao:"Na região da academia, teste uma comunicação de pista no pico da gasolina e compare o resultado com o mesmo horário nas semanas anteriores.",
-      flash:"Perto do shopping, teste a oferta de gasolina no pico do fim de semana e compare a participação da aditivada antes e depois.",
-      jaburuna:"Na rodovia, teste reforço no atendimento do diesel no horário de maior movimento e acompanhe os litros por abastecimento.",
-      sinha:"No bairro, teste uma oferta de retorno para o combustível mais comprado e acompanhe os resgates durante a semana.",
-      teresina:"No fluxo de passagem, teste atendimento dedicado ao diesel no pico e observe a fila e o volume por abastecimento.",
-      "boa-vizinhanca":"Teste uma oferta para o combustível que lidera no posto e compare o ticket com o mesmo dia e horário das semanas anteriores."
-    };
-    return fleet+portrait("Passantes",passText+scope,"")+
-      (gas?portrait("Gasolina no posto",gas,""):"")+(diesel?portrait("Diesel no posto",diesel,""):"")+
-      (rows.length?portrait("Ação sugerida",actions[unit.slug],""):"");
+    if(pairs<6||!highCount)return "";
+    const delta=(lowCount-highCount)/highCount;
+    const movement=Math.abs(delta)<0.01?"o número de abastecimentos ficou praticamente igual":`houve ${pp(Math.abs(delta))} ${delta>0?"mais":"menos"} abastecimentos`;
+    return ` Nos dias em que o litro saiu em média ${number.format(100*spread/pairs)} centavos mais barato, ${movement}. A comparação reúne ${pairs} pares de datas do mesmo mês e dia da semana.`;
   }
 
+  function observationsForUnit(unit,year,months) {
+    const portfolio=new Map(),residual=new Map(),accounts=new Map(),excluded=[];
+    const add=(map,k,v)=>map.set(k,(map.get(k)||0)+v);
+    for(const m of months) {
+      const record=unit[year][m];
+      if(!record.days.some(Boolean))continue;
+      const remaining=new Map(record.fuel);
+      for(const [,idx,pid,qty] of record.clients) {
+        add(portfolio,pid,qty);add(remaining,pid,-qty);
+        const name=keyText(current.names[year][idx]).trim();
+        if(!accounts.has(name))accounts.set(name,{months:new Set(),qty:0});
+        const account=accounts.get(name);
+        if(qty>0)account.months.add(m);
+        account.qty+=qty;
+      }
+      if(!record.complete||!record.clients.length||[...remaining.values()].some(n=>n<0))excluded.push(monthLabels[m]);
+      else for(const [pid,qty] of remaining)add(residual,pid,qty);
+    }
+    const total=map=>[...map.values()].reduce((a,b)=>a+b,0);
+    const fuel=pid=>fuelLabel(catalog.products[pid][1]);
+    const lead=largest(portfolio),leader=largest(residual);
+    const fleetVolume=total(portfolio),publicVolume=total(residual);
+    const repeat=[...accounts.values()].filter(a=>a.months.size>=2).reduce((n,a)=>n+a.qty,0);
+    const dieselShare=map=>[...map].reduce((a,[p,q])=>a+(fuel(p).startsWith("diesel")?q:0),0)/total(map);
+    let fleet="Sem compras de carteira identificadas nos meses selecionados.",retain="Amplie o período para identificar contas recorrentes.";
+    if(lead){
+      const diesel=dieselShare(portfolio),dominant=fuel(lead[0]);
+      fleet=`A carteira ${diesel>.7?"tem perfil de operação a diesel":diesel<.3?"se concentra em veículos de ciclo Otto":"reúne operações a diesel e abastecimentos de veículos leves"}. O produto mais comprado é ${dominant}, com ${pp(lead[1]/fleetVolume)} dos litros.`;
+      if(months.length>1)fleet+=` Quem comprou em pelo menos dois meses responde por ${pp(repeat/fleetVolume)} do volume.`;
+      const topThree=[...accounts.values()].sort((a,b)=>b.qty-a.qty).slice(0,3);
+      if(accounts.size>3)fleet+=` Os três maiores cadastros concentram ${pp(topThree.reduce((n,a)=>n+a.qty,0)/fleetVolume)} dos litros da carteira.`;
+      const common=months.filter(m=>unit[2025][m].complete&&unit[2026][m].complete);
+      const volume=y=>common.reduce((n,m)=>n+unit[y][m].clients.reduce((a,r)=>a+r[3],0),0);
+      const change=growth(volume(2026),volume(2025));
+      retain=`Priorize ${diesel>.65?"frotas que precisam de diesel para rodar com regularidade":diesel<.3?"empresas com equipes em veículos leves":"contas com veículos leves e pesados"} e use o consumo mensal de ${dominant} para dimensionar a proposta.`;
+      if(change!==null)retain+=` Nos meses completos comparáveis, o volume da carteira ${change<0?"caiu":"cresceu"} ${pp(Math.abs(change))} em 2026. ${change<0?"Comece pelos cadastros recorrentes que reduziram litros.":"Procure contas semelhantes às que ampliaram os pedidos."}`;
+    }
+    const receipts=compras[unit.slug+"-"+year];
+    const grid=detailRows(unit.slug,year,()=>true);
+    const totalTx=grid.reduce((a,r)=>a+(r[3]===-1?r[6]:0),0);
+    const baskets=new Map();
+    for(const [m,d,p,n] of receipts.basket)if(selectedMonths.has(m)&&selectedDays.has(d))add(baskets,p,n);
+    const mixed=baskets.get(-1)||0;
+    const topMixed=largest(new Map([...baskets].filter(([p])=>p>=0)));
+    let publicProfile="A carteira e as vendas dos meses selecionados não permitem estimar o combustível dos passantes.";
+    let action="Amplie o recorte antes de escolher uma abordagem para o público passante.";
+    if(leader){
+      const pid=leader[0],name=fuel(pid),share=pp(leader[1]/publicVolume);
+      const fuelRows=grid.filter(r=>r[3]===pid);
+      const tx=fuelRows.reduce((n,r)=>n+r[6],0),vol=fuelRows.reduce((n,r)=>n+r[4],0);
+      const value=fuelRows.reduce((n,r)=>n+r[5],0);
+      const bySlot=new Map();
+      for(const [,d,h,,,,n] of fuelRows)if(h>=0)add(bySlot,d*24+h,n/Math.max(1,detailDays(unit.slug,year,d)));
+      const peak=largest(bySlot),peakText=peak?`${weekdays[Math.floor(peak[0]/24)].toLowerCase()} às ${peak[0]%24}h`:"";
+      const premium=[...residual].filter(([p])=>fuel(p).includes("aditivada")&&fuel(p).includes("gasolina")).reduce((a,[,v])=>a+v,0);
+      const gas=[...residual].filter(([p])=>fuel(p).includes("gasolina")).reduce((a,[,v])=>a+v,0);
+      const size=tx?vol/tx:0;
+      const diesel=dieselShare(residual);
+      let opening;
+      if(unit.slug==="jaburuna"&&diesel>=.5&&size>=50){
+        opening=`Na rodovia, o perfil é compatível com quem para para seguir viagem em veículo pesado. Os tipos de diesel somam ${pp(diesel)} dos litros estimados dos passantes.`;
+      }else if(unit.slug==="boa-vizinhanca"&&gas){
+        const gasPrice=aditivada=>{
+          const rows=grid.filter(r=>r[3]>=0&&fuel(r[3]).includes("gasolina")&&fuel(r[3]).includes("aditivada")===aditivada);
+          return ratio(rows.reduce((n,r)=>n+r[5],0),rows.reduce((n,r)=>n+r[4],0));
+        };
+        const regular=gasPrice(false),additive=gasPrice(true);
+        opening=`Há espaço para as duas gasolinas. A aditivada representa ${pp(premium/gas)} dos litros de gasolina estimados dos passantes${regular&&additive&&additive>regular?`, mesmo custando, na média da pista, ${number.format(100*(additive-regular))} centavos a mais por litro que a comum`:""}.`;
+      }else if(name.includes("gasolina")&&dieselShare(portfolio)>.65&&diesel<.5){
+        opening=`Aqui convivem duas rotinas. A carteira puxa o diesel (${pp(dieselShare(portfolio))} dos seus litros), enquanto quem chega por conta própria procura principalmente gasolina.`;
+      }else if(name.includes("gasolina")&&size>0&&size<10){
+        opening=`O movimento lembra o de quem para para completar poucos litros de cada vez${unit.slug==="arco"?" no centro":unit.slug==="coracao"?" na região da academia":unit.slug==="sinha"?" no bairro":""}.`;
+      }else if(name.includes("gasolina")&&diesel<.5){
+        opening=`Entre quem abastece por conta própria, predominam os combustíveis de veículos leves (${pp(1-diesel)} dos litros estimados).`;
+      }else opening="O volume de passagem revela quais abastecimentos sustentam a unidade.";
+      publicProfile=`${opening} ${name[0].toUpperCase()+name.slice(1)} responde por ${share} dos litros estimados dos passantes.`;
+      if(tx)publicProfile+=` Na pista, cada compra desse combustível dá em média ${liters(size)} (${cash.format(value/tx)})${peakText?", e o horário mais movimentado é "+peakText:""}.`;
+      if(tx)publicProfile+=pricePattern(receipts.daily,pid);
+      action=unit.slug==="jaburuna"&&dieselShare(residual)>=.5?`Teste uma abordagem de parada de estrada, com atendimento de diesel preparado ${peakText?"antes do pico de "+peakText:"para o fluxo de passagem"}.`:
+        unit.slug==="boa-vizinhanca"?"Teste a apresentação da aditivada no atendimento e acompanhe sua participação nos litros e o lucro por litro.":
+        `Concentre o teste de oferta complementar no atendimento de ${name}${peakText?", começando pelo pico de "+peakText:""}.`;
+    }
+    if(totalTx&&mixed&&topMixed)action+=` Hoje, no posto, 1 em cada ${integer.format(totalTx/mixed)} cupons de combustível inclui um automotivo. A venda de ${fuel(topMixed[0])} aparece em ${integer.format(topMixed[1])} dos ${integer.format(mixed)} cupons conjuntos. Acompanhe se essa proporção aumenta após o teste.`;
+    else if(totalTx)action+=" Não apareceram automotivos nos mesmos cupons de combustível neste recorte.";
+    const note=excluded.length?"Estimativa de passantes exclui "+excluded.join(", ")+" por cobertura ou conciliação.":"";
+    return portrait("Perfil Clientes/Frotistas",fleet,"")+portrait("Sugestões para esses clientes",retain,"")+portrait("Perfil Clientes Passantes",publicProfile,note)+portrait("Sugestões para esses clientes",action,"");
+  }
   function drawObservations(s) {
     const single=s.units.length===1;
     get("actions").innerHTML=s.units.map(unit=>{
@@ -691,16 +729,39 @@ window.pista = (() => {
       const common=(y)=>read(u,y,-1).filter(r=>u.common.includes(r[0])).reduce((n,r)=>n+r[6],0);
       return tableRow(u.name,[valid?(u.slug==="jaburuna"?"Filtros · todos os registros":u.slug==="glorimar"?"Troca consolidada":"Troca"):"Unidade sem Troca",... [1,2,3].map(g=>valid?(u.slug==="jaburuna"&&g!==3?"—":integer.format(amount(u,s.year,g))):"—"),valid?integer.format(amount(u,s.year,-1)):"—",pair&&u.common.length?signed(growth(common(2026),common(2025)),pp):"—"]);
     }).join("");
-    const hours=sequence(24).map(h=>totalDays?rows.filter(r=>r[2]===h).reduce((n,r)=>n+r[6],0)/totalDays:null);
-    const week=sequence(7).map(d=>{const dates=available.reduce((n,u)=>n+detailDays(u.slug,s.year,d),0);return dates?rows.filter(r=>r[1]===d).reduce((n,r)=>n+r[6],0)/dates:null;});
-    graphBox(get("trocas-hours"),sequence(24).map(h=>`${h}h`),hours,v=>number.format(v));graphBox(get("trocas-week"),shortDays,week,v=>number.format(v),true);
+    const quantity=get("trocas-measure").value==="qty";
+    const series=quantity?(metric===-1?[
+      {groups:[1],field:7,label:"Lubrificantes (L)"},
+      {groups:[2,3],field:4,label:"Automotivos e filtros (un.)"}
+    ]:[{groups:[metric],field:metric===1?7:4,label:metric===1?"Lubrificantes (L)":"Quantidade (un.)"}]):
+      [{groups:[metric],field:6,label:"Transações"}];
+    const hourLabels=sequence(24).map(h=>h+"h");
+    const axes=["hours","week"];
+    for(const axis of axes)get("trocas-"+axis).replaceChildren();
+    const matrices=series.map(({groups,field,label})=>{
+      const grid=sequence(7).map(()=>Array(24).fill(0));
+      const dates=sequence(7).map(d=>available.reduce((sum,u)=>sum+detailDays(u.slug,s.year,d),0));
+      for(const u of available)for(const group of groups)for(const row of read(u,s.year,group)){
+        if(row[2]>=0)grid[row[1]][row[2]]+=row[field];
+      }
+      const daily=grid.map((day,d)=>dates[d]?day.reduce((a,b)=>a+b,0)/dates[d]:null);
+      const hourly=sequence(24).map(h=>totalDays?grid.reduce((a,day)=>a+day[h],0)/totalDays:null);
+      for(const axis of axes){
+        const container=get("trocas-"+axis);
+        const title=document.createElement("p");title.textContent=label;container.append(title);
+        const chart=document.createElement("div");container.append(chart);
+        graphBox(chart,axis==="hours"?hourLabels:shortDays,axis==="hours"?hourly:daily,v=>number.format(v),axis==="week");
+      }
+      return '<table class="pista-table"><caption>'+html(label)+' por dia observado</caption><thead>'+tableHead(["Dia",...hourLabels])+'</thead><tbody>'+sequence(7).map(d=>tableRow(shortDays[d],grid[d].map(v=>dates[d]?number.format(v/dates[d]):"—"))).join("")+"</tbody></table>";
+    });
+    get("trocas-heat").innerHTML=matrices.join("");
     get("trocas-head").innerHTML=tableHead(["Mês","Transações · 2025","Transações · 2026","Δ 2026/25*","Lubrificantes · "+s.year,"Automotivos · "+s.year,"Filtros · "+s.year,"Total sem duplicar · "+s.year]);
     get("trocas-months").innerHTML=s.allMonths.map(m=>{
       const sum=(y,g,chosen=s.units)=>chosen.reduce((n,u)=>n+read(u,y,g).filter(r=>r[0]===m).reduce((a,r)=>a+r[6],0),0);
       const paired=s.units.filter(u=>record(u,2025).identified&&record(u,2026).identified&&u.common.includes(m));
       return tableRow(monthLabels[m],[integer.format(sum(2025,metric)),integer.format(sum(2026,metric)),paired.length?signed(growth(sum(2026,metric,paired),sum(2025,metric,paired)),pp):"—",...[1,2,3,-1].map(g=>integer.format(sum(s.year,g)))]);
     }).join("");
-    get("trocas-heat").innerHTML='<table class="pista-table">'+tableHead(["Dia",...sequence(24).map(h=>`${h}h`)])+"<tbody>"+sequence(7).map(d=>{const dates=available.reduce((n,u)=>n+detailDays(u.slug,s.year,d),0);return tableRow(shortDays[d],sequence(24).map(h=>dates?number.format(rows.filter(r=>r[1]===d&&r[2]===h).reduce((n,r)=>n+r[6],0)/dates):"—"));}).join("")+"</tbody></table>";
+
   }
 
   return {activate};
