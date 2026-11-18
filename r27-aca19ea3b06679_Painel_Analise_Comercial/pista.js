@@ -24,6 +24,8 @@ window.pista = (() => {
   let catalog, current, state, buyerData, buyerPage=0, request=0, ready=false;
   let selectedMonths = new Set(sequence(10));
   let selectedDays = new Set(sequence(7));
+  const selectedGroups = new Set([0]);
+  let detail, trocas;
 
   function data(file) {
     if (elements.has(file)) return elements.get(file);
@@ -57,12 +59,14 @@ window.pista = (() => {
       selected.clear();
       if (mode==="all") labels.forEach((_,i)=>selected.add(i));
       refresh();
+      if(suffix==="group"){populateProducts();updateMetricOptions();}
       render();
     });
     node.addEventListener("change",()=>{
       selected.clear();
       inputs.forEach((input,i)=>{if(input.checked) selected.add(i);});
       refresh();
+      if(suffix==="group"){populateProducts();updateMetricOptions();}
       render();
     });
     refresh();
@@ -70,26 +74,21 @@ window.pista = (() => {
   }
 
   function populateProducts() {
-    const selected=Number(get("group").value);
+    const selected=selectedGroups;
     get("product").innerHTML='<option value="">Todos os produtos</option>'+
-      catalog.products.map(([group,name,,,code],pid)=>selected===group ? `<option value="${pid}">${html(code?code+" · "+name:name)}</option>` : "").join("");
+      catalog.products.map(([group,name,,,code],pid)=>selected.has(group) ? `<option value="${pid}">${html(code?code+" · "+name:name)}</option>` : "").join("");
   }
 
   function bind() {
     get("store").innerHTML+=
       catalog.stores.map(([slug,name])=>`<option value="${slug}">${html(name)}</option>`).join("");
-    get("group").innerHTML=catalog.groups.map((name,index)=>`<option value="${index}">${html(name)}</option>`).join("");
+    const resetGroups=setupMulti("group",catalog.groups,selectedGroups,"Todas as categorias");
     const resetMonths=setupMulti("months",monthLabels,selectedMonths,"Jan a out");
     const resetDays=setupMulti("days",weekdays,selectedDays,"Todos os dias");
     populateProducts();
     updateMetricOptions();
     get("store").addEventListener("change",load);
     get("year").addEventListener("change",render);
-    get("group").addEventListener("change",()=>{
-      populateProducts();
-      updateMetricOptions();
-      render();
-    });
     get("product").addEventListener("change",render);
     get("chart-metric").addEventListener("change",()=>drawPatterns(state));
     get("abc-metric").addEventListener("change",()=>drawABC(state));
@@ -104,7 +103,7 @@ window.pista = (() => {
     get("reset").addEventListener("click",()=>{
       get("store").value="all";
       get("year").value="2026";
-      get("group").value="0";
+      selectedGroups.clear(); selectedGroups.add(0); resetGroups();
       get("buyer-segment").value="";
       get("buyer-sort").value="volume";
       get("buyer-search").value="";
@@ -124,13 +123,14 @@ window.pista = (() => {
       get("collapse").textContent=hide?"Expandir":"Recolher";
     });
     get("retry").addEventListener("click",()=>{if (ready) load(); else activate();});
+    get("trocas-category").addEventListener("change",()=>drawTrocas(state));
     ready=true;
   }
 
   async function activate() {
     if (ready) return;
     try {
-      catalog=await data("pista-index");
+      [catalog,detail,trocas]=await Promise.all([data("pista-index"),data("pista-detail"),data("pista-trocas")]);
       if(ready) return;
       bind();
       await load();
@@ -169,9 +169,9 @@ window.pista = (() => {
   }
 
   function updateMetricOptions() {
-    const group=Number(get("group").value);
+    const group=selectedGroups.size===1?[...selectedGroups][0]:-1;
     const qty=group===0 ? "Volume (L)" : "Unidades";
-    get("chart-metric").innerHTML=`<option value="qty">${qty}</option>`+
+    get("chart-metric").innerHTML=(group<0?"":`<option value="qty">${qty}</option>`)+
       (group===1?'<option value="lube">Litros convertidos</option>':'')+
       '<option value="sales">Faturamento</option><option value="profit">Lucro bruto</option>';
   }
@@ -200,7 +200,7 @@ window.pista = (() => {
     const products=new Map();
     const grid=sequence(7).map(()=>sequence(24).map(empty));
     const dates=sequence(10).map(()=>Array(7).fill(0));
-    const predicates=new Set(catalog.products.flatMap(([g],pid)=>g===group&&(!filter||pid===Number(filter))?[pid]:[]));
+    const predicates=new Set(catalog.products.flatMap(([g],pid)=>selectedGroups.has(g)&&(!filter||pid===Number(filter))?[pid]:[]));
     for(const month of activeMonths) {
       const record=unit[year][month];
       dates[month]=record.days.map((n,d)=>selectedDays.has(d)?n:0);
@@ -210,7 +210,7 @@ window.pista = (() => {
         if(!products.has(pid))products.set(pid,empty());
         const sums=[totals,products.get(pid),months[month]];
         if(hour>=0)sums.push(grid[day][hour]);
-        for(const sum of sums)addTo(sum,qty,sales,profit,group,capacity);
+        for(const sum of sums)addTo(sum,qty,sales,profit,catalog.products[pid][0],capacity);
       }
     }
     return {totals,months,products,grid,dates};
@@ -287,7 +287,7 @@ window.pista = (() => {
 
   function prepare() {
     const year=Number(get("year").value);
-    const group=Number(get("group").value);
+    const group=selectedGroups.size===1?[...selectedGroups][0]:-1;
     const filter=get("product").value;
     const allMonths=[...selectedMonths].sort((a,b)=>a-b);
     const units=current.units.map(unit=>{
@@ -316,7 +316,7 @@ window.pista = (() => {
     const v=s.time.totals;
     const compare=name=>s.units.some(u=>u.common.length) ? `${signed(growth(s.now.totals[name],s.base.totals[name]),pp)} · 2026/25*` : "Comparação indisponível";
     const cards=[
-      cell(s.group===0?"Volume de combustíveis":"Unidades vendidas",qtyFormat(s.group,v.qty),compare("qty")),
+      ...(s.group<0?[cell("Volume de combustíveis",liters(v.fuel),"Categorias selecionadas"),cell("Unidades de produtos",number.format(v.qty-v.fuel),"Produtos fora de Combustíveis")]:[cell(s.group===0?"Volume de combustíveis":"Unidades vendidas",qtyFormat(s.group,v.qty),compare("qty"))]),
       cell("Faturamento",cash.format(v.sales),compare("sales")),
       cell("Lucro bruto",cash.format(v.profit),compare("profit")),
       cell("Margem bruta",pp(ratio(v.profit,v.sales)),"Lucro bruto ÷ faturamento")
@@ -337,8 +337,8 @@ window.pista = (() => {
     get("units-head").innerHTML=tableHead(["Posto",s.group===0?"Volume":"Quantidade","Faturamento","Lucro bruto","Margem bruta",s.group===0?"Δ volume*":"Δ unidades*","Δ lucro bruto*"]);
     const rank=s.units.slice().sort((a,b)=>b.time.totals.profit-a.time.totals.profit);
     const row=(label,time,base,now,hasPair,klass)=>tableRow(label,[
-      qtyFormat(s.group,time.qty),cash.format(time.sales),cash.format(time.profit),pp(ratio(time.profit,time.sales)),
-      hasPair?signed(growth(now.qty,base.qty),pp):"—",hasPair?signed(growth(now.profit,base.profit),pp):"—"
+      s.group<0?`${liters(time.fuel)} · ${number.format(time.qty-time.fuel)} un.`:qtyFormat(s.group,time.qty),cash.format(time.sales),cash.format(time.profit),pp(ratio(time.profit,time.sales)),
+      hasPair&&s.group>=0?signed(growth(now.qty,base.qty),pp):"—",hasPair?signed(growth(now.profit,base.profit),pp):"—"
     ],klass);
     get("units").innerHTML=rank.map(u=>row(u.name,u.time.totals,u.base.totals,u.now.totals,u.common.length)).join("")+
       (rank.length>1?row("Todos os postos",s.time.totals,s.base.totals,s.now.totals,withPairs.length,"pista-total"):"");
@@ -595,7 +595,7 @@ window.pista = (() => {
       const before=total>0?accumulated/total:0;
       const klass=total<=0||basis<=0?"—":before<.8?"A":before<.95?"B":"C";
       if(basis>0)accumulated+=basis;
-      const values=[klass,qtyFormat(s.group,row.qty),cash.format(row.sales),cash.format(row.profit),pp(ratio(row.profit,row.sales)),klass==="—"?"—":pp(ratio(accumulated,total))];
+      const values=[klass,qtyFormat(catalog.products[id][0],row.qty),cash.format(row.sales),cash.format(row.profit),pp(ratio(row.profit,row.sales)),klass==="—"?"—":pp(ratio(accumulated,total))];
       if(s.group===1)values.splice(2,0,code||"—",capacity?liters(row.lube):"—",capacity?number.format(capacity):"—",source);
       if(s.group===0)values.splice(5,0,row.qty>0?cash.format(row.profit/row.qty):"—");
       return tableRow(name,values);
@@ -613,13 +613,79 @@ window.pista = (() => {
     const s=state=prepare();
     const days=s.time.dayCounts.reduce((a,b)=>a+b,0);
     const shop=s.units.length===1?s.units[0].name:`Todos os postos · ${s.units.length} unidades`;
-    get("context").textContent=`${shop} · ${s.year} · ${integer.format(days)} datas na base · ${catalog.groups[s.group]}`;
+    get("context").textContent=`${shop} · ${s.year} · ${integer.format(days)} datas na base · ${[...selectedGroups].map(g=>catalog.groups[g]).join(", ")||"Nenhuma categoria"}`;
     drawKpis(s);
     drawUnits(s);
     drawSegments(s);
     drawProfiles(s);
     drawPatterns(s);
     drawABC(s);
+    drawExtra(s);
+  }
+
+  function detailRows(slug,year,product) {
+    return detail.units[slug][year].rows.filter(([m,d,,p])=>selectedMonths.has(m)&&selectedDays.has(d)&&product(p));
+  }
+  function detailDays(slug,year,day) {
+    return detail.units[slug][year].days.reduce((n,ds,m)=>n+(selectedMonths.has(m)?ds.reduce((a,v,d)=>a+(selectedDays.has(d)&&(day===undefined||day===d)?v:0),0):0),0);
+  }
+  function drawExtra(s) {
+    const otto=new Set(catalog.products.flatMap(([g,name],i)=>g===0&&/GASOLINA|ETANOL/.test(name)?[i]:[]));
+    const sums=year=>s.allMonths.map(m=>s.units.reduce((total,u)=>total+detailRows(u.slug,year,p=>otto.has(p)).filter(r=>r[0]===m).reduce((v,r)=>v+r[4],0),0));
+    const older=sums(2025), newer=sums(2026), shown=s.year===2026?newer:older;
+    graphBox(get("otto-chart"),s.allMonths.map(m=>monthLabels[m]),shown,liters);
+    get("otto-head").innerHTML=tableHead(["Mês","Otto · 2025","Otto · 2026","Δ 2026/25 · meses completos","Gasolinas · "+s.year,"Etanol · "+s.year]);
+    get("otto").innerHTML=s.allMonths.map((m,i)=>{
+      const units=s.units.filter(u=>u.common.includes(m));
+      const amount=(year,predicate,chosen)=>chosen.reduce((sum,u)=>sum+detailRows(u.slug,year,predicate).filter(r=>r[0]===m).reduce((v,r)=>v+r[4],0),0);
+      return tableRow(monthLabels[m],[liters(older[i]),liters(newer[i]),units.length?signed(growth(amount(2026,p=>otto.has(p),units),amount(2025,p=>otto.has(p),units)),pp):"—",liters(amount(s.year,p=>otto.has(p)&&/GASOLINA/.test(catalog.products[p][1]),s.units)),liters(amount(s.year,p=>otto.has(p)&&/ETANOL/.test(catalog.products[p][1]),s.units))]);
+    }).join("");
+    get("profiles").innerHTML=s.units.map(u=>{
+      const rows=detailRows(u.slug,s.year,p=>p>=0&&catalog.products[p][0]===0), total=detailRows(u.slug,s.year,p=>p===-1);
+      const volume=total.reduce((a,r)=>a+r[4],0), sales=total.reduce((a,r)=>a+r[5],0), transactions=total.reduce((a,r)=>a+r[6],0);
+      if(!transactions)return portrait(u.name,"Sem abastecimentos no recorte.","Amplie os meses e dias selecionados.");
+      const mix=new Map();for(const r of rows)mix.set(r[3],(mix.get(r[3])||0)+r[4]);
+      const rank=[...mix].sort((a,b)=>b[1]-a[1]);
+      const visits=new Map();
+      for(const r of rows){if(!visits.has(r[3]))visits.set(r[3],{count:0,sales:0});const v=visits.get(r[3]);v.count+=r[6];v.sales+=r[5];}
+      const frequent=[...visits].sort((a,b)=>b[1].count-a[1].count)[0];
+      const hours=sequence(24).map(h=>total.filter(r=>r[2]===h).reduce((a,r)=>a+r[6],0)/Math.max(1,detailDays(u.slug,s.year)));
+      const days=sequence(7).map(d=>detailDays(u.slug,s.year,d)?total.filter(r=>r[1]===d).reduce((a,r)=>a+r[6],0)/detailDays(u.slug,s.year,d):0);
+      const hour=hours.indexOf(Math.max(...hours)), day=days.indexOf(Math.max(...days));
+      const gas=rows.filter(r=>/GASOLINA/.test(catalog.products[r[3]][1])).reduce((a,r)=>a+r[4],0), ethanol=rows.filter(r=>/ETANOL/.test(catalog.products[r[3]][1])).reduce((a,r)=>a+r[4],0);
+      const summary=`O combustível mais frequente nas transações é ${catalog.products[frequent[0]][1]}, com ${integer.format(frequent[1].count)} registros e ticket médio de ${cash.format(frequent[1].sales/frequent[1].count)} nesse combustível. ${catalog.products[rank[0][0]][1]} lidera com ${pp(ratio(rank[0][1],volume))} dos litros. Gasolinas somam ${pp(ratio(gas,volume))}, etanol ${pp(ratio(ethanol,volume))} e diesel ${pp(ratio(volume-gas-ethanol,volume))}. Ticket médio de ${cash.format(sales/transactions)} e ${liters(volume/transactions)} por transação de combustível.`;
+      return portrait(u.name,summary,`${integer.format(transactions)} transações. Maior média horária às ${String(hour).padStart(2,"0")}h (${number.format(hours[hour])} transações/dia). ${weekdays[day]} tem a maior média diária (${number.format(days[day])} transações). Médias divididas pelas datas observadas, incluindo dias sem movimento no horário.`);
+    }).join("");
+    drawTrocas(s);
+  }
+  function drawTrocas(s) {
+    const record=(u,y)=>trocas.units[u.slug][y];
+    const read=(u,y,category)=>record(u,y).rows.filter(([m,d,,g])=>selectedMonths.has(m)&&selectedDays.has(d)&&g===category);
+    const amount=(u,y,category,field=6)=>read(u,y,category).reduce((n,r)=>n+r[field],0);
+    const metric=Number(get("trocas-category").value);
+    get("trocas-kpis").closest("section").querySelectorAll(".chart-pair, #pista-trocas-heat").forEach(node=>node.hidden=!s.units.some(u=>record(u,s.year).identified));
+    const available=s.units.filter(u=>record(u,s.year).identified);
+    const totalDays=available.reduce((n,u)=>n+detailDays(u.slug,s.year),0);
+    const rows=available.flatMap(u=>read(u,s.year,metric));
+    const transactions=rows.reduce((n,r)=>n+r[6],0),sales=rows.reduce((n,r)=>n+r[5],0);
+    const lube=available.reduce((n,u)=>n+amount(u,s.year,1,7),0),packs=available.reduce((n,u)=>n+amount(u,s.year,1,4),0),mapped=available.reduce((n,u)=>n+amount(u,s.year,1,8),0);
+    get("trocas-kpis").innerHTML=[cell("Transações da Troca",integer.format(transactions),get("trocas-category").selectedOptions[0].textContent),cell("Transações por dia",totalDays?number.format(transactions/totalDays):"—","Por unidade e data observada"),cell("Ticket médio da Troca",transactions?cash.format(sales/transactions):"—","Faturamento ÷ IDs de venda distintos"),cell("Lubrificantes em litros",liters(lube),`${number.format(mapped)} de ${number.format(packs)} unidades com conversão por código`)].join("");
+    get("trocas-status").innerHTML=s.units.map(u=>{
+      const valid=record(u,s.year).identified;
+      const pair=record(u,2025).identified&&record(u,2026).identified;
+      const common=(y)=>read(u,y,-1).filter(r=>u.common.includes(r[0])).reduce((n,r)=>n+r[6],0);
+      return tableRow(u.name,[valid?(u.slug==="jaburuna"?"Filtros · todos os registros":u.slug==="glorimar"?"Troca consolidada":"Troca"):"Unidade sem Troca",... [1,2,3].map(g=>valid?(u.slug==="jaburuna"&&g!==3?"—":integer.format(amount(u,s.year,g))):"—"),valid?integer.format(amount(u,s.year,-1)):"—",pair&&u.common.length?signed(growth(common(2026),common(2025)),pp):"—"]);
+    }).join("");
+    const hours=sequence(24).map(h=>totalDays?rows.filter(r=>r[2]===h).reduce((n,r)=>n+r[6],0)/totalDays:null);
+    const week=sequence(7).map(d=>{const dates=available.reduce((n,u)=>n+detailDays(u.slug,s.year,d),0);return dates?rows.filter(r=>r[1]===d).reduce((n,r)=>n+r[6],0)/dates:null;});
+    graphBox(get("trocas-hours"),sequence(24).map(h=>`${h}h`),hours,v=>number.format(v));graphBox(get("trocas-week"),shortDays,week,v=>number.format(v),true);
+    get("trocas-head").innerHTML=tableHead(["Mês","Transações · 2025","Transações · 2026","Δ 2026/25*","Lubrificantes · "+s.year,"Automotivos · "+s.year,"Filtros · "+s.year,"Total sem duplicar · "+s.year]);
+    get("trocas-months").innerHTML=s.allMonths.map(m=>{
+      const sum=(y,g,chosen=s.units)=>chosen.reduce((n,u)=>n+read(u,y,g).filter(r=>r[0]===m).reduce((a,r)=>a+r[6],0),0);
+      const paired=s.units.filter(u=>record(u,2025).identified&&record(u,2026).identified&&u.common.includes(m));
+      return tableRow(monthLabels[m],[integer.format(sum(2025,metric)),integer.format(sum(2026,metric)),paired.length?signed(growth(sum(2026,metric,paired),sum(2025,metric,paired)),pp):"—",...[1,2,3,-1].map(g=>integer.format(sum(s.year,g)))]);
+    }).join("");
+    get("trocas-heat").innerHTML='<table class="pista-table">'+tableHead(["Dia",...sequence(24).map(h=>`${h}h`)])+"<tbody>"+sequence(7).map(d=>{const dates=available.reduce((n,u)=>n+detailDays(u.slug,s.year,d),0);return tableRow(shortDays[d],sequence(24).map(h=>dates?number.format(rows.filter(r=>r[1]===d&&r[2]===h).reduce((n,r)=>n+r[6],0)/dates):"—"));}).join("")+"</tbody></table>";
   }
 
   return {activate};

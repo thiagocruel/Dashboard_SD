@@ -6,11 +6,11 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Indicadores, perfis de clientes e estratégias de pista e lojas.">
 <title>GSD | Painel Comercial 2027</title>
-<link rel="stylesheet" href="style.css">
-<script src="store-plans.js" defer></script>
-<script src="affinity.js" defer></script>
-<script src="pista.js" defer></script>
-<script src="app.js" defer></script>
+<link rel="stylesheet" href="style.css?v=20261118-pista2">
+<script src="store-plans.js?v=20261118-pista2" defer></script>
+<script src="affinity.js?v=20261118-pista2" defer></script>
+<script src="pista.js?v=20261118-pista2" defer></script>
+<script src="app.js?v=20261118-pista2" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -37,7 +37,7 @@
         <label class="field">Ano<select id="pista-year"><option>2026</option><option>2025</option></select></label>
         <div class="field">Meses<details class="dropdown" id="pista-months"></details></div>
         <div class="field">Dias da semana<details class="dropdown" id="pista-days"></details></div>
-        <label class="field">Linha de produtos<select id="pista-group"></select></label>
+        <div class="field">Categorias<details class="dropdown" id="pista-group"></details></div>
         <label class="field">Produto<select id="pista-product"><option value="">Todos os produtos</option></select></label>
         <button class="quiet" id="pista-reset" type="button">Limpar filtros</button>
       </div>
@@ -71,8 +71,24 @@
         </div>
       </div>
     </section>
+    <section class="panel" aria-labelledby="pista-otto-title">
+      <h2 id="pista-otto-title">Evolução mensal do ciclo Otto</h2>
+      <p class="caption">Gasolinas e etanol em litros. Usa posto, ano, meses e dias selecionados. A leitura reúne todos os produtos Otto.</p>
+      <div id="pista-otto-chart"></div><div class="scroll"><table class="pista-table"><thead id="pista-otto-head"></thead><tbody id="pista-otto"></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="pista-trocas-title">
+      <h2 id="pista-trocas-title">Trocas · variação e movimento por horário</h2>
+      <p class="caption">Troca identificada pelo usuário com maior quantidade de filtros vendida no respectivo ano, usando janeiro a outubro. No Glorimar, os dois trocadores são consolidados em todos os meses. No Jaburuna, entram apenas filtros de todos os registros. Boa Vizinhança e Teresina não têm Troca. Usa posto, ano, meses e dias selecionados.</p>
+      <div class="kpis" id="pista-trocas-kpis"></div>
+      <h3>Resultado por unidade · transações</h3><div class="scroll"><table class="pista-table"><thead><tr><th>Unidade</th><th>Escopo</th><th>Lubrificantes</th><th>Automotivos</th><th>Filtros</th><th>Total sem duplicar</th><th>Δ total 2026/25*</th></tr></thead><tbody id="pista-trocas-status"></tbody></table></div>
+      <label class="field">Categoria da Troca<select id="pista-trocas-category"><option value="-1">Total</option><option value="1">Lubrificantes</option><option value="2">Automotivos</option><option value="3">Filtros</option></select></label>
+      <p class="caption">IDs de venda distintos. Uma venda com mais de uma categoria conta uma vez no total. As médias por dia e hora usam as datas observadas da unidade, incluindo datas sem venda na Troca. No consolidado, a média é por unidade e dia. * Variações usam unidades identificadas nos dois anos e meses completos comuns. A ocupação em percentual depende da jornada disponível e da duração do atendimento.</p>
+      <div class="chart-pair"><div><h3>Transações por hora por dia</h3><div id="pista-trocas-hours"></div></div><div><h3>Transações por dia da semana</h3><div id="pista-trocas-week"></div></div></div>
+      <div class="scroll"><table class="pista-table"><thead id="pista-trocas-head"></thead><tbody id="pista-trocas-months"></tbody></table></div>
+      <h3>Dia da semana × hora · transações médias</h3><div class="scroll" id="pista-trocas-heat"></div>
+    </section>
     <section class="panel" aria-labelledby="pista-profiles-title">
-      <div class="section-top"><div><h2 id="pista-profiles-title">Perfis de abastecimento</h2></div></div>
+      <div class="section-top"><div><h2 id="pista-profiles-title">Perfis de abastecimento por unidade</h2><p class="caption">Retrato do movimento de combustíveis por unidade, com mix, ticket médio, horário e dia da semana. Usa posto, ano, meses e dias selecionados. A leitura reúne todos os combustíveis.</p></div></div>
       <div class="portraits" id="pista-profiles"></div>
     </section>
     <section class="panel" aria-labelledby="pista-actions-title">
