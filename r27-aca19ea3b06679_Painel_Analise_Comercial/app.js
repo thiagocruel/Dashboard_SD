@@ -68,6 +68,7 @@ function switchModule(pista) {
   $("pista-view").hidden = !pista;
   $("loja-view").hidden = pista;
   $("breadcrumb").textContent = pista ? "Pista" : "Lojas";
+  if (pista) window.pista.activate();
   for (const [id,active] of [["pista-tab",pista],["loja-tab",!pista]]) {
     $(id).classList.toggle("active",active);
     $(id).setAttribute("aria-pressed",String(active));
@@ -433,7 +434,13 @@ $("abc-body").addEventListener("click",e=>{
   $("consumption-title").scrollIntoView({block:"start",behavior:"smooth"});
 });
 $("clear-focus").addEventListener("click",()=>{focus=null;page=0;render();});
-for(const [id,pista] of [["pista-tab",true],["loja-tab",false],["back-loja",false]])$(id).addEventListener("click",()=>switchModule(pista));
+for(const [id,pista] of [["pista-tab",true],["loja-tab",false]])$(id).addEventListener("click",()=>{
+  switchModule(pista);
+  if (pista) history.replaceState(null,"","#pista");
+  else if (location.hash==="#pista") history.replaceState(null,"",location.pathname+location.search);
+  window.scrollTo(0,0);
+});
+if (location.hash==="#pista") switchModule(true);
 document.addEventListener("click",e=>document.querySelectorAll("details.dropdown[open]").forEach(d=>{if(!d.contains(e.target))d.open=false;}));
 document.addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll("details.dropdown[open]").forEach(d=>{d.open=false;d.querySelector("summary").focus();});});
 const filterPanel=document.querySelector(".filter-panel");
