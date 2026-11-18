@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Consumo por horário, perfis de clientes e curva ABC de sete lojas da rede.">
+<title>GSD | Painel Comercial 2027</title>
+<link rel="stylesheet" href="style.css">
+<script src="store-plans.js" defer></script>
+<script src="affinity.js" defer></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <a class="brand" href="#" aria-label="GSD – Painel Comercial">
+    <span class="brand-mark">SD</span><span><strong>GSD Comercial</strong><small>Planejamento 2027</small></span>
+  </a>
+  <div class="nav-label">Módulos</div>
+  <nav aria-label="Módulos">
+    <button class="nav-button active" id="loja-tab" type="button" aria-pressed="true"><span aria-hidden="true">▥</span> Lojas</button>
+    <button class="nav-button" id="pista-tab" type="button" aria-pressed="false"><span aria-hidden="true">◉</span> Pista <small>Em preparação</small></button>
+  </nav>
+  <div class="side-note"><span class="status-dot"></span> Uso interno</div>
+</aside>
+<main>
+<header class="top"><span>Painel comercial <span class="slash">/</span> <b id="breadcrumb">Lojas</b></span><span class="pilot">Planejamento 2027</span></header>
+<div id="pista-view" hidden>
+  <section class="hero"><span class="eyebrow">MÓDULO PISTA</span><h1>Pista</h1><p>Área reservada para os indicadores de abastecimento e clientes de pista.</p></section>
+  <div class="panel empty-panel">O piloto com dados está disponível no módulo <button class="link-button" id="back-loja">Lojas</button>.</div>
+</div>
+<div id="loja-view">
+<section class="hero">
+  <span class="eyebrow">MÓDULO LOJAS</span>
+  <h1>Painel comercial das lojas</h1>
+  <p>Perfil de compra, consumo médio e curva ABC de produtos.</p>
+</section>
+<section class="panel filter-panel" aria-label="Filtros do painel">
+  <div class="filter-top"><b>Filtros do painel</b><button class="quiet" type="button" id="toggle-filters" aria-controls="filter-fields" aria-expanded="true">Recolher</button></div>
+  <div id="filter-fields">
+  <div class="filter-grid">
+    <label class="field">Posto<select id="store"><option value="all">Todos os postos</option><option value="arco">Arco</option><option value="coracao">Coração</option><option value="flash">Flash</option><option value="glorimar" selected>Glorimar</option><option value="jaburuna">Jaburuna</option><option value="sinha">Sinhá Sabóia</option><option value="teresina">Teresina</option></select></label>
+    <label class="field">Ano<select id="year"><option>2026</option><option>2025</option></select></label>
+    <div class="field">Meses<details class="dropdown" id="months"></details></div>
+    <div class="field">Dias da semana<details class="dropdown" id="days"></details></div>
+    <div class="field">Categoria<details class="dropdown" id="categories"></details></div>
+    <button class="quiet" type="button" id="reset">Limpar filtros</button>
+  </div>
+  <div class="filter-grid filter-grid-secondary">
+    <label class="field">Medida dos gráficos<select id="metric"><option value="qty">Quantidade</option><option value="sales">Faturamento</option><option value="profit">Lucro bruto</option></select></label>
+    <label class="field">Produto<input type="search" id="abc-search" placeholder="Buscar pelo nome"></label>
+    <label class="field">Base da classificação ABC<select id="abc-metric"><option value="profit">Lucro bruto</option><option value="sales">Faturamento</option><option value="qty">Quantidade</option></select></label>
+    <label class="field">Classe ABC<select id="abc-class"><option value="">Todas</option><option>A</option><option>B</option><option>C</option><option value="—">Sem classe</option></select></label>
+  </div>
+  </div>
+  <div id="focus-strip" class="focus-strip" hidden><span id="focus-label"></span><button class="quiet" id="clear-focus">Limpar produto</button></div>
+  <p class="context-line" id="context" role="status">Carregando vendas…</p>
+</section>
+<div id="dashboard-loading" class="panel empty-panel" hidden role="status">Carregando a base selecionada…</div>
+<div id="dashboard-error" class="panel empty-panel error" hidden role="alert">Não foi possível carregar esta base. <button class="link-button" id="retry">Tentar novamente</button></div>
+<div id="dashboard">
+<section id="kpis" class="kpis" aria-label="Indicadores do recorte"></section>
+<section class="panel" id="unit-panel" hidden aria-labelledby="units-title">
+  <div class="section-top"><div><div class="eyebrow">TODOS OS POSTOS</div><h2 id="units-title">Resultado por unidade</h2></div></div>
+  <div class="scroll"><table class="unit-table"><thead><tr><th>Posto</th><th>Faturamento</th><th>Lucro bruto</th><th>Margem bruta</th><th>% do faturamento</th></tr></thead><tbody id="unit-body"></tbody><tfoot id="unit-foot"></tfoot></table></div>
+</section>
+<section class="panel portraits-panel" aria-labelledby="profiles-title">
+  <div class="section-top"><div><div class="eyebrow">PERFIL DE CLIENTES</div><h2 id="profiles-title">Retratos de compra</h2></div><span class="badge">Jan–out/2026</span></div>
+  <p class="muted" id="location"></p>
+  <div class="portraits" id="portraits"></div>
+  <div class="profile-note" id="profile-note"></div>
+</section>
+<section class="panel actions-panel" aria-labelledby="actions-title">
+  <div class="section-top"><div><div class="eyebrow">PLANEJAMENTO COMERCIAL</div><h2 id="actions-title">Três ações para 2027</h2></div></div>
+  <div class="portraits" id="actions"></div>
+</section>
+<section class="panel consumption" aria-labelledby="consumption-title">
+  <div class="section-top">
+    <div><div class="eyebrow">QUANDO OS PRODUTOS VENDEM</div><h2 id="consumption-title">Consumo médio</h2></div>
+  </div>
+  <div class="chart-pair">
+    <div class="chart-card"><h3>Por hora</h3><p class="muted">Média por dia do recorte em cada hora</p><div id="hour-chart"></div></div>
+    <div class="chart-card"><h3>Por dia da semana</h3><p class="muted">Média diária por dia da semana</p><div id="day-chart"></div></div>
+  </div>
+  <p class="readout" id="point-value" aria-live="polite"></p>
+  <h3>Dia da semana × hora</h3>
+  <div class="scroll" id="heatmap"></div>
+  <p class="caption">As médias usam todas as datas selecionadas, inclusive dias sem venda do item. Na visão geral, as vendas de todos os postos são somadas antes de calcular a média. A quantidade segue a unidade cadastrada no produto.</p>
+</section>
+<section class="panel affinity" aria-labelledby="affinity-title">
+  <div class="section-top"><div><div class="eyebrow">ITENS DO MESMO CUPOM</div><h2 id="affinity-title">Afinidade entre categorias</h2></div><span class="badge" id="affinity-count" hidden></span></div>
+  <p id="affinity-context" class="muted" role="status">Carregando cupons…</p>
+  <div class="scroll" id="affinity-result" hidden>
+    <table class="affinity-table">
+      <thead><tr><th scope="col">Composição do cupom</th><th scope="col">Cupons</th><th scope="col">% da base</th></tr></thead>
+      <tbody class="affinity-summary" id="affinity-summary"></tbody>
+      <tbody class="affinity-detail" id="affinity-detail"></tbody>
+    </table>
+  </div>
+  <p class="caption" id="affinity-overlap" hidden></p>
+  <p class="caption">A análise usa os itens disponíveis nas exportações de 2025 e 2026. Exportações incompletas podem deixar parte da cesta de fora.</p>
+</section>
+<section class="panel abc" aria-labelledby="abc-title">
+  <div class="section-top"><div><div class="eyebrow">QUAIS PRODUTOS SUSTENTAM O RESULTADO</div><h2 id="abc-title">Curva ABC de produtos</h2></div><button class="quiet" id="download">Baixar CSV</button></div>
+  <p class="caption">A até 80%, B até 95% e C para o restante. O produto que alcança o limite fecha a faixa. A classificação usa posto, ano, meses, dias e categoria como base. As classes e a busca também filtram os gráficos. Selecione um produto para restringir o painel a ele.</p>
+  <div id="grade-summary" class="grades"></div>
+  <div class="scroll abc-table"><table><thead><tr><th>Classe</th><th>Produto / categoria</th><th>Quantidade</th><th>Faturamento</th><th>Lucro bruto</th><th>Acumulado</th></tr></thead><tbody id="abc-body"></tbody></table></div>
+  <div class="page-ctrl"><span id="abc-count"></span><div><button class="quiet" id="prev">Anterior</button><button class="quiet" id="next">Próxima</button></div></div>
+</section>
+<footer class="panel methodology">
+<details><summary>Como interpretar os dados</summary>
+<p>Janeiro a outubro de 2025 ou 2026. O lucro bruto é valor líquido menos quantidade × custo unitário. Os valores monetários são arredondados ao centavo por agrupamento. A cobertura confronta o faturamento exportado com o comercial dos meses escolhidos para a loja inteira.</p>
+<p>Os retratos usam as vendas observadas de janeiro a outubro de 2026 e o contexto das lojas. São situações de compra sugeridas pelo horário e pelo mix. Identidade, profissão e intenção de quem compra não aparecem na base. Glorimar e Sinhá Sabóia têm Zé Delivery. As exportações não identificam o canal de todas as vendas. Promoção Balcão reúne itens vendidos no balcão. O nome da categoria não indica vendas no aplicativo.</p>
+<p>Fontes: Vendas1795008395.xlsx, Vendas_produtos_Lojas_26.xlsx e comparativo-faturamento2026-11-18.csv.</p>
+</details>
+</footer>
+</div>
+</div>
+</main>
+</div>
+</body>
+</html>
