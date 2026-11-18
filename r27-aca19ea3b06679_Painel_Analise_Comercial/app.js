@@ -86,162 +86,119 @@ function setupFilters() {
   makeFilter("categories",source.categories.map(categoryLabel),"Todas as categorias");
 }
 let profileRequest=0;
-const purchaseNames={
-  "FOOD":"Quem para para lanchar",
-  "BEBIDAS NAO ALCOOLICAS":"Quem passa para pegar uma bebida",
-  "BEBIDAS ALCOOLICAS GELADAS":"Quem procura bebida gelada para levar",
-  "CIGARROS":"Quem passa pela loja para comprar cigarros",
-  "MERCEARIA":"Quem leva itens de mercearia",
-  "BOMBONIERE":"Quem escolhe um doce",
-  "PROMOÇÃO BALCÃO":"Quem leva um item do balcão",
-  "PICOLES E SORVETES":"Quem procura um gelado"
-};
-function purchasePortraits(sales,basket,prior,scope,allowedProducts) {
-  const money=cents=>formatMoney.format(cents/100);
+function purchasePortraits(sales,basket,scope,allowedProducts,prior=null) {
   const pct=(n,d)=>formatPct.format(100*n/d)+"%";
-  const productName=id=>sales.products[id][1].toLocaleLowerCase("pt-BR").replace(/^am (?=natur)/,"água mineral ");
-  const dates=Array(7).fill(0);
-  const cats=basket.categories.map((name,i)=>({name,bit:1<<i,count:0,solo:0,sales:0,profit:0,
-    baseline:0,comparable:0,days:Array(7).fill(0),slots:Array(168).fill(0)}));
-  const lookup=new Map(cats.map(c=>[c.name,c]));
-  const productCats=sales.products.map(([c])=>lookup.get(sales.categories[c]));
-  const itemTotals=sales.products.map(()=>accumulator());
+  const money=cents=>formatMoney.format(cents/100);
+  const productName=id=>sales.products[id][1].toLowerCase().replace(/^am (?=natur)/,"água mineral ");
+  const productCats=sales.products.map(([c])=>basket.categories.indexOf(sales.categories[c]));
   const eligible=sales.products.map(([c],id)=>scope.categories.has(sales.categories[c])&&(!allowedProducts||allowedProducts.has(id)));
-  const selectedNames=allowedProducts&&new Set([...allowedProducts].map(id=>JSON.stringify([productCats[id]?.name,sales.products[id][1]])));
-  const priorCats=prior?.products.map(([c,name])=>{
-    const cat=prior.categories[c];
-    return scope.categories.has(cat)&&(!selectedNames||selectedNames.has(JSON.stringify([cat,name])))?lookup.get(cat):null;
+  const selectedKeys=allowedProducts&&new Set([...allowedProducts].map(id=>JSON.stringify([sales.categories[sales.products[id][0]],sales.products[id][1]])));
+  const previousCats=prior?.products.map(([i,name])=>{
+    const cat=prior.categories[i];
+    return scope.categories.has(cat)&&(!selectedKeys||selectedKeys.has(JSON.stringify([cat,name])))?basket.categories.indexOf(cat):-1;
   });
-  let receipts=0;
-  const rows=[];
+  const periods=["Cliente de meio de semana","Cliente de final de semana"].map(title=>({title,dates:0,coupons:0,baskets:[],rows:[],products:sales.products.map(()=>accumulator()),
+    cats:basket.categories.map((name,i)=>({name,i,count:0,solo:0,sales:0,profit:0,baseline:0,comparable:0,hours:Array(24).fill(0)}))}));
   for(const m of scope.months){
     const block=sales.months[m],previous=prior?.months[m];
     for(const d of scope.days){
-      dates[d]+=block.days[d];
+      const p=periods[Number(d>=5)];p.dates+=block.days[d];
       for(const row of basket.slots[m*7+d]){
-        const [mask,n]=row;receipts+=n;
-        let matched=mask;
+        p.coupons+=row[1];
+        let mask=row[0];
         if(allowedProducts){
-          matched=0;
-          for(let i=2;i<row.length;i++)if(eligible[row[i]])matched|=productCats[row[i]]?.bit||0;
+          mask=0;
+          for(let i=2;i<row.length;i++)if(eligible[row[i]])mask|=1<<productCats[row[i]];
         }
-        for(const cat of cats)if(matched&cat.bit){
-          cat.count+=n;cat.days[d]+=n;
-          if(mask===cat.bit)cat.solo+=n;
+        p.baskets.push([mask,row]);
+        for(const c of p.cats)if(mask&(1<<c.i)){
+          c.count+=row[1];
+          if(row[0]===(1<<c.i))c.solo+=row[1];
         }
       }
     }
     for(const row of block.rows){
-      const [slot,id,qty,value,profit]=row,d=Math.floor(slot/24);
+      const [slot,id,qty,v,g]=row,d=Math.floor(slot/24);
       if(!scope.days.has(d))continue;
-      add(itemTotals[id],qty,value,profit);
-      const cat=productCats[id];
-      if(!cat||!eligible[id])continue;
-      cat.sales+=value;cat.profit+=profit;cat.slots[slot]+=value;rows.push(row);
-      if(previous?.days[d]>0&&block.days[d]>0)cat.comparable+=value;
+      const p=periods[Number(d>=5)];
+      add(p.products[id],qty,v,g);
+      if(!eligible[id])continue;
+      const c=p.cats[productCats[id]];
+      if(!c)continue;
+      c.sales+=v;c.profit+=g;c.hours[slot%24]+=v;p.rows.push(row);
+      if(previous?.days[d]>0&&block.days[d]>0)c.comparable+=v;
     }
     if(previous)for(const [slot,id,,value] of previous.rows){
-      const d=Math.floor(slot/24),cat=priorCats[id];
-      if(cat&&scope.days.has(d)&&previous.days[d]>0&&block.days[d]>0)
-        cat.baseline+=value*block.days[d]/previous.days[d];
+      const d=Math.floor(slot/24),idx=previousCats[id];
+      if(idx>=0&&scope.days.has(d)&&previous.days[d]>0&&block.days[d]>0)
+        periods[Number(d>=5)].cats[idx].baseline+=value*block.days[d]/previous.days[d];
     }
   }
-  const choices=cats.filter(c=>scope.categories.has(c.name)&&c.name!=="USO E CONSUMO - DESPESAS"&&c.count>0&&c.sales>0);
-  if(!receipts||!choices.length)return '<p class="muted">Sem compras de clientes para este recorte.</p>';
-  const take=(list,score)=>list.reduce((a,b)=>score(b)>score(a)?b:a);
-  const first=take(choices,c=>c.count);
-  const picks=[first],others=choices.filter(c=>c!==first&&c.profit>0);
-  if(others.length)picks.push(take(others,c=>c.profit));
-  const remaining=others.filter(c=>!picks.includes(c));
-  const rising=remaining.filter(c=>c.baseline>0&&c.comparable>c.baseline);
-  if(remaining.length)picks.push(rising.length?take(rising,c=>c.comparable-c.baseline):take(remaining,c=>c.profit));
-  return picks.map(cat=>{
-    // Compare three consecutive hours on the same weekday, per observed date.
-    let best=null;
-    for(const d of scope.days)if(dates[d])for(let h=0;h<=21;h++){
-      const slot=d*24+h;
-      const value=(cat.slots[slot]+cat.slots[slot+1]+cat.slots[slot+2])/dates[d];
-      if(!best||value>best.value)best={d,h,slot,value};
+  const best=(values,score)=>values.reduce((a,b)=>score(b)>score(a)?b:a);
+  return periods.map((p,k)=>{
+    const other=periods[1-k];
+    const choices=p.cats.filter(c=>scope.categories.has(c.name)&&c.name!=="USO E CONSUMO - DESPESAS"&&c.count>0&&c.sales>0);
+    if(!p.dates||!choices.length)return {title:p.title,empty:"Sem compras para este período nos filtros selecionados."};
+    const lead=best(choices,c=>c.count);
+    const shareGain=c=>c.count/p.coupons-other.cats[c.i].count/other.coupons;
+    const material=choices.filter(c=>c.profit>0&&c.count>=.05*p.coupons);
+    const distinct=other.coupons&&material.length?best(material,shareGain):lead;
+    const c=distinct&&other.coupons&&shareGain(distinct)>=.01?distinct:lead;
+    const hour=best(range(22),h=>c.hours[h]+c.hours[h+1]+c.hours[h+2]);
+    const items=new Map();let salesPeak=0,profitPeak=0;
+    for(const [slot,id,qty,v,g] of p.rows)if(productCats[id]===c.i&&slot%24>=hour&&slot%24<hour+3){
+      if(!items.has(id))items.set(id,accumulator());add(items.get(id),qty,v,g);salesPeak+=v;profitPeak+=g;
     }
-    if(!best||best.value<=0)return "";
-    const items=new Map();
-    let revenue=0,profit=0;
-    for(const [slot,id,qty,v,g] of rows){
-      if(productCats[id]!==cat||slot<best.slot||slot>best.slot+2)continue;
-      if(!items.has(id))items.set(id,accumulator());
-      add(items.get(id),qty,v,g);revenue+=v;profit+=g;
+    const id=best([...items.keys()],id=>items.get(id).qty),product=productName(id);
+    const label=categoryLabel(c.name).toLowerCase(),main=categoryLabel(lead.name).toLowerCase();
+    const window=hour+"h–"+(hour+3)+"h",share=pct(c.count,p.coupons);
+    let profile=lead===c?`A compra mais frequente inclui ${label}.`:
+      `A categoria mais presente é ${main}, mas o que distingue esse período é a procura por ${label}.`;
+    if(other.coupons)profile+=` A cada 100 cupons, ${formatPct.format(100*c.count/p.coupons)} incluem ${label}, frente a ${formatPct.format(100*other.cats[c.i].count/other.coupons)} ${k?"de segunda a sexta":"aos sábados e domingos"}.`;
+    profile+=c.solo>c.count/2?` Em ${pct(c.solo,c.count)} dessas compras, o cliente leva só itens da categoria.`:` Em ${pct(c.count-c.solo,c.count)} dessas compras, o cliente acrescenta itens de outra categoria.`;
+    profile+=` O movimento da categoria se concentra entre ${hour}h e ${hour+3}h, quando ${product} lidera em unidades.`;
+    const occasion=c.name==="FOOD"?(hour<11?"O retrato é de quem passa cedo para pegar um lanche pronto. ":(hour<18?"A parada para lanchar ganha força à tarde. ":"A parada para lanchar ganha força à noite. ")):
+      c.name==="BEBIDAS ALCOOLICAS GELADAS"?(hour<4?"A compra de geladas atravessa a madrugada. ":"O cliente procura bebida gelada para levar. "):
+      c.name==="CIGARROS"&&c.solo>c.count/2?"Há um público que entra com uma compra específica em mente. ":"";
+    profile=occasion+profile;
+    let economics=`Por dia selecionado, há ${formatPct.format(c.count/p.dates)} cupons com ${label}, com gasto médio de ${money(c.sales/c.count)} na categoria. Na faixa de três horas são ${money(salesPeak/p.dates)} em vendas por dia, com margem bruta de ${pct(profitPeak,salesPeak)}.`;
+    if(c.baseline>0){
+      const change=(c.comparable-c.baseline)/c.baseline;
+      economics+=` No período selecionado, as vendas registradas da categoria ficaram ${formatPct.format(100*Math.abs(change))}% ${change<0?"abaixo":"acima"} de 2025, ajustando o número de dias.`;
     }
-    const [id]=take([...items],entry=>entry[1].qty);
-    const window=dayNames[best.d]+" · "+best.h+"h–"+(best.h+3)+"h";
-    const label=categoryLabel(cat.name),name=productName(id);
-
-    const ice=/^gelo(?: |$)/.test(name);
-    const title=ice?"Quem passa para levar gelo":purchaseNames[cat.name]||"Quem procura "+label.toLowerCase();
-    const single=cat.solo/cat.count;
-    let profile=single>=.65?`O cliente costuma entrar para resolver uma compra específica. Em ${pct(cat.solo,cat.count)} dos cupons com ${label.toLowerCase()}, o cliente leva apenas itens dessa categoria.`:
-      single<=.35?`A compra costuma fazer parte de uma cesta maior. Em ${pct(cat.count-cat.solo,cat.count)} dos cupons com ${label.toLowerCase()}, o cliente leva também outra categoria.`:
-      `Há duas ocasiões de compra. Em ${pct(cat.solo,cat.count)} dos cupons com ${label.toLowerCase()}, o cliente resolve só essa compra. Nos demais, acrescenta itens de outras categorias.`;
-    profile+=` De cada 100 cupons da loja, ${formatNum.format(Math.round(100*cat.count/receipts))} incluem a categoria. No pico, ${name} lidera em unidades.`;
-    const businessDays=dates.slice(0,5).reduce((a,b)=>a+b,0),weekendDays=dates[5]+dates[6];
-    if(businessDays&&weekendDays){
-      const weekdayRate=cat.days.slice(0,5).reduce((a,b)=>a+b,0)/businessDays;
-      const weekendRate=(cat.days[5]+cat.days[6])/weekendDays;
-      if(weekdayRate>0&&Math.abs(weekendRate/weekdayRate-1)>=.2)
-        profile+=` Por dia, essa compra aparece ${pct(Math.abs(weekendRate-weekdayRate),weekdayRate)} ${weekendRate>weekdayRate?"mais":"menos"} no fim de semana.`;
+    const pairCounts=new Map();
+    for(const [mask,row] of p.baskets)if(mask&(1<<c.i))for(let i=2;i<row.length;i++){
+      const pid=row[i],t=p.products[pid];
+      if(productCats[pid]!==c.i&&basket.categories[productCats[pid]]!=="USO E CONSUMO - DESPESAS"&&t.sales>0&&t.profit/t.sales>Math.max(0,profitPeak/salesPeak))
+        pairCounts.set(pid,(pairCounts.get(pid)||0)+row[1]);
     }
-    let economics=`Nessas três horas, a média por dia observado é de ${money(best.value)} em vendas e ${money(profit/dates[best.d])} de lucro bruto. A margem é de ${pct(profit,revenue)}.`;
-    if(cat.baseline>0){
-      const change=(cat.comparable-cat.baseline)/cat.baseline;
-      economics+=` No recorte, o faturamento registrado da categoria ficou ${formatPct.format(Math.abs(change)*100)}% ${change<0?"abaixo":"acima"} de 2025, ajustando a quantidade de cada dia da semana.`;
-    }
-    // Product affinity is available by weekday. Financial measures also have hour.
-    const pairs=new Map();let weekdayCount=0;
-    for(const m of scope.months)for(const row of basket.slots[m*7+best.d]){
-      if(!(row[0]&cat.bit))continue;
-      if(allowedProducts&&!row.slice(2).some(pid=>eligible[pid]&&productCats[pid]===cat))continue;
-      weekdayCount+=row[1];
-      for(let j=2;j<row.length;j++){
-        const pid=row[j],other=productCats[pid];
-        if(!other||other===cat||other.name==="USO E CONSUMO - DESPESAS")continue;
-        const totals=itemTotals[pid];
-        if(totals.sales>0&&totals.profit/totals.sales>Math.max(0,profit/revenue))
-          pairs.set(pid,(pairs.get(pid)||0)+row[1]);
-      }
-    }
-    const pair=pairs.size?take([...pairs],e=>e[1]):null;
-    const supply=cat.name==="FOOD"?`Prepare um lote de ${name} antes das ${best.h}h e ajuste o próximo pela venda e pela sobra.`:
-      cat.name.startsWith("BEBIDAS")?(ice?`Reforce o estoque de ${name} no freezer antes do pico.`:`Reponha ${name} na geladeira antes do pico.`):
-      `Antecipe a reposição de ${name} para o início dessa faixa.`;
+    const pair=pairCounts.size?best([...pairCounts],e=>e[1]):null;
+    const supply=c.name==="FOOD"?`Prepare ${product} em lotes antes das ${hour}h e ajuste o segundo lote pela sobra.`:
+      /^gelo(?: |$)/.test(product)?`Reforce o freezer de gelo antes das ${hour}h.`:
+      c.name.startsWith("BEBIDAS")?`Reponha ${product} na geladeira antes das ${hour}h.`:`Garanta ${product} disponível antes das ${hour}h.`;
     let action=supply;
-    if(pair&&weekdayCount&&pair[1]/weekdayCount>=.02){
-      const companion=itemTotals[pair[0]];
-      action+=` Teste sugerir ${productName(pair[0])} nessa compra. O item já aparece em ${pct(pair[1],weekdayCount)} desses cupons nesse dia da semana e tem margem de ${pct(companion.profit,companion.sales)} no período.`;
-    }else{
-      const alternatives=[...items].filter(([pid,t])=>pid!==id&&t.sales>0&&t.profit/t.sales>Math.max(0,profit/revenue));
-      if(alternatives.length){
-        const [pid,t]=take(alternatives,e=>e[1].profit);
-        action+=` Dê visibilidade também a ${productName(pid)}, que já vende nesse horário com margem de ${pct(t.profit,t.sales)}.`;
-      }else action+=" Teste a reposição com o preço atual e acompanhe as faltas na faixa.";
-    }
-    return `<article class="portrait"><span class="tag">${html(window)}</span><h3>${html(title)}</h3><p>${html(profile)}</p><p class="evidence">${html(economics)}</p><p><strong>Ação para a loja</strong> · ${html(action)}</p></article>`;
-  }).join("");
+    if(pair&&pair[1]/c.count>=.02)action+=` Teste oferecer ${productName(pair[0])} junto. Já aparece em ${pct(pair[1],c.count)} desses cupons e deixa ${pct(p.products[pair[0]].profit,p.products[pair[0]].sales)} de margem no período.`;
+    else action+=` Teste a reposição antecipada e registre as faltas. Compare faturamento e margem da faixa com os das semanas anteriores.`;
+    return {title:p.title,window,profile,economics,action,category:label,product,share,rate:c.count/p.dates,margin:pct(profitPeak,salesPeak),period:k?"sábado e domingo":"segunda a sexta"};
+  });
 }
 async function renderPurchaseProfiles(matchingRows) {
   const version=++profileRequest,dataset=source,year=Number(dataset.year);
   const scope={months:[...selection.months],days:new Set(selection.days),categories:new Set([...selection.categories].map(i=>dataset.categories[i]))};
   const selected=matchingRows&&new Set(matchingRows.map(row=>row.id));
   const total=dataset.units.length>1;
+  showQuarterPlans($("loja-plan"),"loja",dataset.units.map(u=>[u,storeNames[u]]));
   $("location").textContent=total?"":storeLocations[dataset.units[0]];
   $("profile-period").textContent=year+" · "+scope.months.length+" "+(scope.months.length===1?"mês":"meses");
   $("portraits").textContent="Carregando os retratos de compra…";
   try{
     const sections=await Promise.all(dataset.units.map(async(unit,i)=>{
-      const [sales,basket,prior]=await Promise.all([fetchSource(unit+"-"+year),fetchBasketGroups(unit,year),
-        year===2026?fetchSource(unit+"-2025"):null]);
+      const [sales,basket,prior]=await Promise.all([fetchSource(unit+"-"+year),fetchBasketGroups(unit,year),year===2026?fetchSource(unit+"-2025"):null]);
       if(version!==profileRequest||dataset!==source)return "";
       const ids=selected&&new Set(dataset.productMaps[i].flatMap((id,local)=>selected.has(id)?[local]:[]));
-      const cards=purchasePortraits(sales,basket,prior,scope,ids);
-      const grid=`<div class="portraits">${cards}</div>`;
+      const profiles=purchasePortraits(sales,basket,scope,ids,prior);
+      const cards=profiles.map(p=>`<article class="portrait"><h3>${html(p.title)}</h3>${p.empty?`<p>${html(p.empty)}</p>`:`<span class="tag">${html(p.period+" · "+p.window)}</span><p>${html(p.profile)}</p><p class="evidence">${html(p.economics)}</p><p><strong>Estratégia</strong> · ${html(p.action)}</p>`}</article>`).join("");
+      const grid=`<div class="observ-cards">${cards}</div>`;
       return total?`<details class="observ-unit"><summary>${html(storeNames[unit])}</summary><p class="muted">${html(storeLocations[unit])}</p>${grid}</details>`:grid;
     }));
     if(version===profileRequest&&dataset===source)$("portraits").innerHTML=sections.join("");
