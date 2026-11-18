@@ -431,81 +431,96 @@ window.pista = (() => {
     get("next").disabled=buyerPage+1>=pages;
   }
 
-  function topProduct(map,field) {
-    return [...map].sort((a,b)=>b[1][field]-a[1][field])[0];
-  }
-  function favoriteFuel(map) {
-    const item=[...map].sort((a,b)=>b[1]-a[1])[0];
-    return item&&item[1]>0?catalog.products[item[0]][1]:null;
-  }
-  function strongestLoss(older,newer,segment) {
-    const result=[...older.buyers].filter(([,row])=>row.segment===segment).map(([key,row])=>
-      ({name:row.name,loss:row.qty-(newer.buyers.get(key)?.qty||0)})).sort((a,b)=>b.loss-a.loss)[0];
-    return result&&result.loss>0?result:null;
-  }
   function portrait(title,summary,evidence,action=false) {
     return `<article class="portrait ${action?"action-card":""}"><h3>${html(title)}</h3><p>${html(summary)}</p><p class="evidence">${html(evidence)}</p></article>`;
   }
 
-  function drawProfiles(s) {
-    const f=s.fuel;
-    const reason=s.group!==0?"Selecione Combustíveis para analisar o perfil dos grupos.":"Selecione todos os dias da semana para ler o perfil dos grupos.";
-    if(!f) {
-      get("profiles").innerHTML=`<p class="muted">${html(reason)}</p>`;
-    } else {
-      get("profiles").innerHTML=segmentNames.map((name,i)=>{
-        const amount=f.groups[i];
-        if(i===2&&f.groups[2]<0)return portrait(name,"O total de vendas exportado ficou abaixo do volume da carteira em parte do recorte.","Concilie os meses sinalizados antes de estimar o perfil desse grupo.");
-        if(!f.cells||amount<=0)return portrait(name,"Sem volume registrado para este grupo no recorte.","Altere posto, meses ou combustível para ampliar a leitura.");
-        const fuel=i===2&&f.discrepancies.length?null:favoriteFuel(f.fuels[i]);
-        const peakMonth=f.months.map(month=>month[i]).indexOf(Math.max(...f.months.map(month=>month[i])));
-        const tops=[...f.buyers.values()].filter(row=>row.segment===i).sort((a,b)=>b.qty-a.qty).slice(0,3);
-        const first=tops[0];
-        const share=f.groups[2]<0?"":` São ${pp(ratio(amount,f.total))} do total da pista.`;
-        const concentration=first?` ${first.name} responde por ${pp(ratio(first.qty,amount))} do grupo.`:"";
-        let summary=i===0?"Abastecimento da carteira identificada no cadastro de clientes.":
-          i===1?"Abastecimento registrado nas contas e convênios de Desconto Frota.":
-          "Abastecimento sem vínculo com as contas identificadas no relatório, estimado pelo saldo da pista.";
-        if(fuel) summary+=` O combustível de maior volume é ${fuel}.`;
-        const prior=s.fuelBase.groups[i],next=s.fuelNow.groups[i];
-        const delta=s.fuelBase.cells&&s.fuelNow.cells&&next>=0?growth(next,prior):null;
-        const trend=delta===null?"":` Variação de ${signed(delta,pp)} nos meses comparáveis.`;
-        return portrait(name,summary,`${liters(amount/100)} no recorte.${share}${concentration} Maior volume em ${monthLabels[peakMonth]}.${trend}`);
-      }).join("");
+  const fuelLabel = name => name.toLocaleLowerCase("pt-BR")
+    .replace("gasolina c aditivada","gasolina aditivada")
+    .replace("diesel s-10 b comum","diesel S-10").replace("etanol hidratado combustivel","etanol");
+  function largest(map) {
+    return [...map].filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
+  }
+  function observationsForUnit(unit,year,months) {
+    const portfolio=new Map(), residual=new Map(), accounts=new Map(), excluded=[];
+    const add=(map,key,n)=>map.set(key,(map.get(key)||0)+n);
+    for(const month of months) {
+      const rec=unit[year][month];
+      if(!rec.days.some(Boolean)) continue;
+      const balance=new Map(rec.fuel);
+      for(const [,index,pid,qty] of rec.clients) {
+        add(portfolio,pid,qty);
+        add(balance,pid,-qty);
+        const key=keyText(current.names[year][index]).trim();
+        if(!accounts.has(key)) accounts.set(key,{months:new Set(),qty:0});
+        const account=accounts.get(key);
+        if(qty>0) account.months.add(month);
+        account.qty+=qty;
+      }
+      if([...balance.values()].some(v=>v<0)||!rec.complete||!rec.clients.length) excluded.push(monthLabels[month]);
+      else for(const [pid,qty] of balance) add(residual,pid,qty);
     }
+    const fuelName=pid=>fuelLabel(catalog.products[pid][1]);
+    const total=map=>[...map.values()].reduce((a,b)=>a+b,0);
+    const best=largest(portfolio);
+    const repeat=[...accounts.values()].filter(a=>a.months.size>=2);
+    const recurrentVolume=repeat.reduce((sum,a)=>sum+a.qty,0);
+    const fleet=best?portrait("Cliente/Frotista",
+      `A carteira de clientes e convênios comprou ${liters(total(portfolio)/100)}. De cada 100 litros, cerca de ${integer.format(100*best[1]/total(portfolio))} foram de ${fuelName(best[0])}.`+
+      (months.length>1?` Os cadastros que voltaram em pelo menos dois meses responderam por ${pp(ratio(recurrentVolume,total(portfolio)))} dos litros da carteira.`:""),
+      `Para manter a carteira, acompanhe os cadastros que abastecem todo mês e procure os que reduziram as compras. Para prospectar, comece por ${/diesel/i.test(fuelName(best[0]))?"operações com veículos a diesel":"empresas com veículos leves"} que circulam pela região e usam ${fuelName(best[0])} com frequência.`):
+      portrait("Cliente/Frotista","Sem compras identificadas da carteira nos meses selecionados.","");
+    const pass=largest(residual);
+    const scope=excluded.length?` Fora da estimativa por cobertura incompleta ou diferença entre as bases: ${excluded.join(", ")}.`:"";
+    const passText=pass?`Estimamos ${liters(total(residual)/100)} vendidos ao público passante, descontando a carteira das vendas do posto. O combustível com mais litros foi ${fuelName(pass[0])} (${pp(ratio(pass[1],total(residual)))}).`:
+      "Os meses selecionados não permitem estimar a composição dos passantes.";
+    const rows=detailRows(unit.slug,year,p=>p>=0&&catalog.products[p][0]===0);
+    function pattern(family) {
+      const grouped=[new Map(),new Map()];
+      for(const [,day,h,p,qty,sales,tx] of rows) {
+        if(!catalog.products[p][1].startsWith(family)) continue;
+        const group=grouped[Number(day>=5)];
+        if(!group.has(p)) group.set(p,{qty:0,sales:0,tx:0,hours:Array(24).fill(0)});
+        const v=group.get(p); v.qty+=qty;v.sales+=sales;v.tx+=tx;if(h>=0)v.hours[h]+=tx;
+      }
+      const overall=new Map();
+      for(const group of grouped) for(const [pid,v] of group) add(overall,pid,v.qty);
+      const leader=largest(overall);
+      if(!leader)return "";
+      const pid=leader[0], name=fuelName(pid);
+      const [wk,we]=grouped.map(g=>g.get(pid));
+      if(!wk?.tx||!we?.tx)return `O produto de maior volume nessa família foi ${name}. A seleção de dias não permite comparar os dois períodos.`;
+      const pct=(g,v)=>pp(ratio(v.qty,[...g.values()].reduce((a,b)=>a+b.qty,0)));
+      const ticketA=wk.sales/wk.tx,ticketB=we.sales/we.tx;
+      const peak=v=>v.hours.indexOf(Math.max(...v.hours));
+      const delta=growth(ticketB,ticketA);
+      const diff=delta===null?"":Math.abs(delta)<0.0005?" (praticamente igual)":` (${pp(Math.abs(delta))} ${delta>0?"maior":"menor"})`;
+      const basket=we.qty/we.tx-wk.qty/wk.tx;
+      const reading=Math.abs(basket)<0.05?"O volume médio por abastecimento praticamente se manteve.":`Quem abasteceu com ${name} no fim de semana levou, em média, ${liters(Math.abs(basket))} a ${basket>0?"mais":"menos"} por compra.`;
+      return `${reading} A participação de ${name} nos litros de ${family==="GASOLINA"?"gasolina":"diesel"} foi de ${pct(grouped[0],wk)} de segunda a sexta e ${pct(grouped[1],we)} no fim de semana. Nesse produto, o gasto médio passou de ${cash.format(ticketA)} para ${cash.format(ticketB)}${diff}. O preço médio por litro foi de ${cash.format(wk.sales/wk.qty)} e ${cash.format(we.sales/we.qty)}, respectivamente. A hora com mais registros foi ${peak(wk)}h nos dias úteis e ${peak(we)}h no fim de semana.`;
+    }
+    const gas=pattern("GASOLINA"),diesel=pattern("DIESEL");
+    const actions={
+      arco:"No centro, teste uma oferta de aditivada no horário de maior movimento da gasolina e acompanhe quantos abastecimentos mudam de produto.",
+      glorimar:"Na área central, ajuste a cobertura ao pico da gasolina e acompanhe se o ticket e o tempo de espera mudam.",
+      coracao:"Na região da academia, teste uma comunicação de pista no pico da gasolina e compare o resultado com o mesmo horário nas semanas anteriores.",
+      flash:"Perto do shopping, teste a oferta de gasolina no pico do fim de semana e compare a participação da aditivada antes e depois.",
+      jaburuna:"Na rodovia, teste reforço no atendimento do diesel no horário de maior movimento e acompanhe os litros por abastecimento.",
+      sinha:"No bairro, teste uma oferta de retorno para o combustível mais comprado e acompanhe os resgates durante a semana.",
+      teresina:"No fluxo de passagem, teste atendimento dedicado ao diesel no pico e observe a fila e o volume por abastecimento.",
+      "boa-vizinhanca":"Teste uma oferta para o combustível que lidera no posto e compare o ticket com o mesmo dia e horário das semanas anteriores."
+    };
+    return fleet+portrait("Passantes",passText+scope,"")+
+      (gas?portrait("Gasolina no posto",gas,""):"")+(diesel?portrait("Diesel no posto",diesel,""):"")+
+      (rows.length?portrait("Ação sugerida",actions[unit.slug],""):"");
+  }
 
-    const peak=sequence(24).map(hour=>s.time.grid.reduce((sum,day)=>sum+day[hour].qty,0));
-    const maxHour=peak.indexOf(Math.max(...peak));
-    const rangeText=`${String(maxHour).padStart(2,"0")}h`;
-    const profitLeader=topProduct(s.time.products,"profit");
-    const label=s.group===0&&profitLeader?catalog.products[profitLeader[0]][1]:null;
-    const passersContext={
-      arco:"Por ficar no centro, testar redução da espera para quem abastece durante os deslocamentos urbanos.",
-      glorimar:"Na área central, testar fluidez de entrada e saída no pico e medir volume por faixa.",
-      coracao:"Testar abordagem e sinalização para o fluxo local, inclusive de quem circula nas imediações da academia.",
-      flash:"Medir separadamente a resposta do período letivo e do fim de semana próximo ao shopping.",
-      jaburuna:"Na rodovia, testar sinalização de acesso, visibilidade do diesel e encaminhamento de veículos maiores.",
-      sinha:"Testar rapidez no horário de maior movimento para fidelizar o fluxo do próprio bairro.",
-      teresina:"Separar o atendimento de veículos pesados e leves nos picos, considerando o fluxo de passagem e o comércio próximo."
-    }[current.store]||"Testar cobertura da equipe e oferta de aditivada por posto, acompanhando lucro por litro.";
-    const canCompare=s.fuelBase?.cells&&s.fuelNow?.cells;
-    const clientLoss=canCompare?strongestLoss(s.fuelBase,s.fuelNow,0):null;
-    const fleetLoss=canCompare?strongestLoss(s.fuelBase,s.fuelNow,1):null;
-    const actions=[
-      portrait("Clientes · recuperar carteira",clientLoss?
-        `Revisar ${clientLoss.name}: a carteira registrou ${liters(clientLoss.loss/100)} a menos nos meses comuns. Confirmar se houve perda de abastecimento, mudança de posto ou de cadastro antes de definir a proposta.`:
-        "Fazer uma revisão mensal dos maiores clientes por posto e identificar onde abastecem, quais combustíveis usam e o que mudou na frequência.",
-        "Medir litros recuperados por conta e lucro bruto por litro do volume negociado.",true),
-      portrait("Desconto Frota · revisar convênios",fleetLoss?
-        `Revisar o convênio ${fleetLoss.name}, com queda registrada de ${liters(fleetLoss.loss/100)}. Conferir reenquadramento cadastral e renegociar volume e desconto com aprovação comercial.`:
-        "Conferir quais convênios geram volume recorrente e revisar o desconto a partir do custo, do volume entregue e da margem por litro.",
-        "Medir litros por convênio, retenção e lucro bruto por litro após desconto.",true),
-      portrait("Passantes · converter no atendimento",peak[maxHour]>0?
-        `Garantir cobertura da equipe e fluidez na pista perto das ${rangeText}, hora de maior volume ou quantidade no recorte total. ${passersContext}${label?` ${label} lidera o lucro bruto no recorte.`:""}`:
-        "Identificar as faixas de maior movimento e testar atendimento mais rápido, sinalização de acesso e oferta de aditivada onde houver margem.",
-        "Medir volume residual, mix de aditivada e lucro bruto por litro. Usar os picos como referência do movimento total.",true)
-    ];
-    get("actions").innerHTML=actions.join("");
+  function drawObservations(s) {
+    const single=s.units.length===1;
+    get("actions").innerHTML=s.units.map(unit=>{
+      const cards=observationsForUnit(unit,s.year,s.allMonths);
+      return `<details class="observ-unit" ${single?"open":""}><summary>${html(unit.name)}</summary><div class="observ-cards">${cards}</div></details>`;
+    }).join("");
   }
 
   function graphBox(container, labels, values, format, columns=false) {
@@ -617,7 +632,7 @@ window.pista = (() => {
     drawKpis(s);
     drawUnits(s);
     drawSegments(s);
-    drawProfiles(s);
+    drawObservations(s);
     drawPatterns(s);
     drawABC(s);
     drawExtra(s);

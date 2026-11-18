@@ -63,3 +63,9 @@ main{min-width:0;max-width:1600px;width:100%;margin:auto;padding:0 27px 25px}.to
 #pista-view .section-top select{min-width:130px}
 @media(max-width:1180px){.pista-fields{grid-template-columns:repeat(4,minmax(0,1fr))}.pista-fields button{justify-self:start}}
 @media(max-width:760px){.pista-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.pista-rank-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.pista-rank-controls label:last-child{grid-column:1/-1}.pista-chart{min-height:0}}
+
+.observ-unit{border-top:1px solid var(--stroke);padding:.7rem 0}
+.observ-unit summary{cursor:pointer;font-weight:650}
+.observ-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:.65rem;margin-top:.75rem}
+.observ-cards .portrait p{font-size:.9rem;line-height:1.55}
+.observ-cards .portrait p:empty{display:none}
