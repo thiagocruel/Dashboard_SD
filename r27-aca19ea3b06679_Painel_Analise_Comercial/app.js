@@ -12,39 +12,15 @@ const categoryNames = {
   "PICOLES E SORVETES": "Picolés e sorvetes",
   "PROMOÇÃO BALCÃO": "Promoção Balcão"
 };
-const portraits = {
-  glorimar: {
-    location: "Loja em área central de Sobral, um pouco menos central que o Arco. Opera balcão e Zé Delivery.",
-    note: "Os dados gerais de bebidas misturam os canais. Promoção Balcão identifica itens vendidos no balcão. O subgrupo Zé Delivery, quando aparece, mostra apenas os itens cadastrados nele.",
-    items: [
-      {time: "8h–11h · mais forte nos dias úteis", name: "Quem passa para pegar um lanche de manhã",
-       description: "Passa cedo procurando algo pronto, como salgado ou pão de queijo. Para essa compra, o balcão abastecido antes das 8h importa mais do que esperar o movimento da tarde.",
-       evidence: "Food tem seus três maiores horários às 8h, 9h e 10h. No fim de semana, a média diária da categoria cai cerca de 48% frente aos dias úteis."},
-      {time: "12h–14h · balcão", name: "Quem acrescenta um item no caixa na hora do almoço",
-       description: "É a pessoa que leva um item pequeno do balcão, como Trident, Halls ou Baton. Vale garantir que esses itens estejam visíveis e repostos antes do almoço.",
-       evidence: "12h e 13h são os dois maiores horários de Promoção Balcão. O subgrupo cresceu 6,3% em faturamento comercial no acumulado contra 2025."},
-      {time: "19h–23h · fim de semana", name: "Quem compra cerveja gelada à noite",
-       description: "Procura cerveja gelada ou retornável. É uma ocasião compatível com compra para consumir depois, que pode chegar pelo balcão ou pelo aplicativo. Repor geladas e conferir retornáveis antes do pico é a ação que atende os dois canais.",
-       evidence: "Sábado lidera a venda diária registrada, com R$ 11,8 mil. Alcoólicas geladas vendem cerca de 3 vezes mais por dia no fim de semana que nos dias úteis."}
-    ]
-  },
-  jaburuna: {
-    location: "Loja de posto de rodovia. A localização ajuda a interpretar compras de passagem, lanches e bebidas.",
-    note: "As situações abaixo são retratos de compra sugeridos pelos dados. A base registra produtos e horários. A condição de viajante ou morador é uma hipótese de contexto.",
-    items: [
-      {time: "6h–11h · café da manhã", name: "Quem faz uma parada rápida para comer",
-       description: "Chega cedo e encontra no balcão um salgado, pão de queijo, expresso ou cappuccino. Para quem está de passagem, a loja pode testar se deixar o combo existente pronto para pedir facilita a escolha.",
-       evidence: "Food é a maior categoria em lucro bruto observado na faixa, com R$ 31,8 mil. Salgados SDMais respondem por quase metade desse valor."},
-      {time: "15h–19h · pico de lanche", name: "Quem chega no fim da tarde para lanchar e se abastecer",
-       description: "Procura salgado ou pastel e tem a opção de levar água gelada ou outra bebida. A ocasião também favorece snacks de mercearia. Uma segunda rodada de preparo e reposição antes das 16h atende esse pico.",
-       evidence: "A faixa soma 30,2% da venda registrada da loja e 32,8% de Food. Os maiores horários de Food se concentram entre 16h e 19h nos dois anos."},
-      {time: "Sábado e domingo · tarde", name: "Quem leva bebida, petisco ou algo gelado",
-       description: "No fim de semana, aparece com mais força a compra de cerveja gelada, snacks, dindin ou sorvete. A reposição no freezer pode começar antes das 14h, e os snacks podem ficar prontos para o pico seguinte.",
-       evidence: "No fim de semana, o faturamento médio diário observado sobe R$ 662. Cervejas e outras alcoólicas geladas, mercearia e sorvetes respondem juntos por R$ 516 dessa diferença."}
-    ]
-  }
+const storeLocations={
+  arco:"Centro de Sobral.",
+  coracao:"Área urbana próxima ao centro e a uma academia.",
+  flash:"Próxima ao shopping, à universidade e a um mercantil.",
+  glorimar:"Área central de Sobral. As vendas incluem balcão e Zé Delivery.",
+  jaburuna:"Loja de posto de rodovia.",
+  sinha:"Loja de bairro. As vendas incluem balcão e Zé Delivery.",
+  teresina:"Posto de rodovia com comércio nas proximidades."
 };
-Object.assign(storeProfiles, portraits);
 const cache = new Map();
 let source = null;
 let selection = {};
@@ -109,120 +85,167 @@ function setupFilters() {
   makeFilter("days",dayNames,"Todos os dias");
   makeFilter("categories",source.categories.map(categoryLabel),"Todas as categorias");
 }
-function renderPortraits() {
-  const profile=storeProfiles[$("store").value];
-  $("location").textContent=profile.location;
-  $("profile-note").textContent=profile.note;
-  $("portraits").innerHTML=profile.items.map(item=>`<article class="portrait">
-    <span class="tag">${html(item.time)}</span><h3>${html(item.name)}</h3>
-    <p>${html(item.description)}</p><p class="evidence">${html(item.evidence)}</p></article>`).join("");
-}
-
-let storeObservationRequest=0;
-const shoppingOccasions={
-  "CIGARROS":"buscar cigarros",
-  "BEBIDAS NAO ALCOOLICAS":"pegar água, refrigerante ou outra bebida sem álcool",
-  "BEBIDAS ALCOOLICAS GELADAS":"comprar bebida alcoólica gelada",
-  "FOOD":"pegar um lanche pronto",
-  "BOMBONIERE":"levar um doce",
-  "MERCEARIA":"comprar itens de mercearia"
+let profileRequest=0;
+const purchaseNames={
+  "FOOD":"Quem para para lanchar",
+  "BEBIDAS NAO ALCOOLICAS":"Quem passa para pegar uma bebida",
+  "BEBIDAS ALCOOLICAS GELADAS":"Quem procura bebida gelada para levar",
+  "CIGARROS":"Quem passa pela loja para comprar cigarros",
+  "MERCEARIA":"Quem leva itens de mercearia",
+  "BOMBONIERE":"Quem escolhe um doce",
+  "PROMOÇÃO BALCÃO":"Quem leva um item do balcão",
+  "PICOLES E SORVETES":"Quem procura um gelado"
 };
-function shopObservations(basket,sales,months,days,allowed) {
+function purchasePortraits(sales,basket,prior,scope,allowedProducts) {
+  const money=cents=>formatMoney.format(cents/100);
   const pct=(n,d)=>formatPct.format(100*n/d)+"%";
-  const stats=basket.categories.map((name,i)=>({name,bit:1<<i,receipts:0,alone:0,profit:0,
-    bySlot:Array(168).fill(0),byDay:Array(7).fill(0),products:new Map()}));
-  const byName=new Map(stats.map(c=>[c.name,c]));
-  const dates=Array(7).fill(0),baskets=[];
+  const productName=id=>sales.products[id][1].toLocaleLowerCase("pt-BR").replace(/^am (?=natur)/,"água mineral ");
+  const dates=Array(7).fill(0);
+  const cats=basket.categories.map((name,i)=>({name,bit:1<<i,count:0,solo:0,sales:0,profit:0,
+    baseline:0,comparable:0,days:Array(7).fill(0),slots:Array(168).fill(0)}));
+  const lookup=new Map(cats.map(c=>[c.name,c]));
+  const productCats=sales.products.map(([c])=>lookup.get(sales.categories[c]));
+  const itemTotals=sales.products.map(()=>accumulator());
+  const eligible=sales.products.map(([c],id)=>scope.categories.has(sales.categories[c])&&(!allowedProducts||allowedProducts.has(id)));
+  const selectedNames=allowedProducts&&new Set([...allowedProducts].map(id=>JSON.stringify([productCats[id]?.name,sales.products[id][1]])));
+  const priorCats=prior?.products.map(([c,name])=>{
+    const cat=prior.categories[c];
+    return scope.categories.has(cat)&&(!selectedNames||selectedNames.has(JSON.stringify([cat,name])))?lookup.get(cat):null;
+  });
   let receipts=0;
-  for(const m of months){
-    const block=sales.months[m];
-    for(const day of days){
-      dates[day]+=block.days[day];
-      for(const row of basket.slots[m*7+day]){
-        const [mask,n]=row;
-        receipts+=n;baskets.push(row);
-        for(const cat of stats)if(mask&cat.bit){
-          cat.receipts+=n;cat.byDay[day]+=n;
-          if(mask===cat.bit)cat.alone+=n;
+  const rows=[];
+  for(const m of scope.months){
+    const block=sales.months[m],previous=prior?.months[m];
+    for(const d of scope.days){
+      dates[d]+=block.days[d];
+      for(const row of basket.slots[m*7+d]){
+        const [mask,n]=row;receipts+=n;
+        let matched=mask;
+        if(allowedProducts){
+          matched=0;
+          for(let i=2;i<row.length;i++)if(eligible[row[i]])matched|=productCats[row[i]]?.bit||0;
+        }
+        for(const cat of cats)if(matched&cat.bit){
+          cat.count+=n;cat.days[d]+=n;
+          if(mask===cat.bit)cat.solo+=n;
         }
       }
     }
-    for(const [slot,pid,qty,value,profit] of block.rows){
-      if(!days.has(Math.floor(slot/24)))continue;
-      const cat=byName.get(sales.categories[sales.products[pid][0]]);
-      if(!cat)continue;
-      cat.profit+=profit;cat.bySlot[slot]+=value;
-      cat.products.set(pid,(cat.products.get(pid)||0)+qty);
+    for(const row of block.rows){
+      const [slot,id,qty,value,profit]=row,d=Math.floor(slot/24);
+      if(!scope.days.has(d))continue;
+      add(itemTotals[id],qty,value,profit);
+      const cat=productCats[id];
+      if(!cat||!eligible[id])continue;
+      cat.sales+=value;cat.profit+=profit;cat.slots[slot]+=value;rows.push(row);
+      if(previous?.days[d]>0&&block.days[d]>0)cat.comparable+=value;
+    }
+    if(previous)for(const [slot,id,,value] of previous.rows){
+      const d=Math.floor(slot/24),cat=priorCats[id];
+      if(cat&&scope.days.has(d)&&previous.days[d]>0&&block.days[d]>0)
+        cat.baseline+=value*block.days[d]/previous.days[d];
     }
   }
-  const candidates=stats.filter(c=>allowed.has(c.name)&&c.receipts>0);
-  if(!receipts||!candidates.length)return ["Sem cupons para a seleção desta loja.","Amplie o período ou a seleção de categorias para identificar uma ação."];
-  const first=candidates.sort((a,b)=>b.receipts-a.receipts)[0];
-  const second=candidates.filter(c=>c!==first&&c.profit>0).sort((a,b)=>b.profit-a.profit)[0];
-  const target=second||first;
-  const bestProduct=cat=>{
-    const best=[...cat.products].sort((a,b)=>b[1]-a[1])[0];
-    return best&&best[1]>0?sales.products[best[0]][1].toLocaleLowerCase("pt-BR"):"";
-  };
-  const bestItem=bestProduct(first),targetItem=bestProduct(target);
-  const occasion=cat=>shoppingOccasions[cat.name]||"comprar "+categoryLabel(cat.name).toLowerCase();
-  let profile=`A ocasião de compra mais frequente é ${occasion(first)}. Ela aparece em ${pct(first.receipts,receipts)} dos cupons${bestItem?", e "+bestItem+" lidera em unidades nessa categoria":""}.`;
-  const mixed=1-first.alone/first.receipts;
-  profile+=mixed<.5?` Em ${pct(first.alone,first.receipts)} desses cupons, a compra termina nessa categoria.`:
-    ` Em ${pct(first.receipts-first.alone,first.receipts)} desses cupons, a pessoa leva também outra categoria.`;
-  const peakSlot=cat=>cat.bySlot.reduce((best,v,i)=>v/(dates[Math.floor(i/24)]||1)>cat.bySlot[best]/(dates[Math.floor(best/24)]||1)?i:best,0);
-  if(second){
-    const firstPeak=peakSlot(first);
-    profile+=` O faturamento dessa compra atinge seu pico médio ${dayNames[Math.floor(firstPeak/24)].toLowerCase()} às ${firstPeak%24}h.`;
-  }
-  const peak=peakSlot(target);
-  const window=dayNames[Math.floor(peak/24)].toLowerCase()+" às "+(peak%24)+"h";
-  if(second)profile+=` Outra ocasião importante é ${occasion(second)}. Entre as demais categorias selecionadas, é a que mais deixa lucro bruto (${formatMoney.format(second.profit/100)}). `;
-  else profile+=" ";
-  profile+=`O pico de faturamento médio de ${categoryLabel(target.name).toLowerCase()} ocorre ${window}.`;
-  const weekdays=dates.slice(0,5).reduce((a,b)=>a+b,0),weekend=dates[5]+dates[6];
-  if(weekdays&&weekend){
-    const business=target.byDay.slice(0,5).reduce((a,b)=>a+b,0)/weekdays;
-    const off=(target.byDay[5]+target.byDay[6])/weekend;
-    if(business>0&&Math.abs(off/business-1)>=.15)
-      profile+=off>=business*2?` No fim de semana, a média diária de cupons dessa categoria é ${formatPct.format(off/business)} vezes a dos dias úteis.`:
-        ` Por dia observado, há ${pct(Math.abs(off-business),business)} ${off>business?"mais":"menos"} cupons dessa categoria no fim de semana do que de segunda a sexta.`;
-  }
-  const pairCounts=new Map();
-  for(const [mask,n,...items] of baskets)if(mask&target.bit){
-    for(const pid of items){
-      const product=sales.products[pid];
-      if(product&&sales.categories[product[0]]!==target.name)
-        pairCounts.set(pid,(pairCounts.get(pid)||0)+n);
+  const choices=cats.filter(c=>scope.categories.has(c.name)&&c.name!=="USO E CONSUMO - DESPESAS"&&c.count>0&&c.sales>0);
+  if(!receipts||!choices.length)return '<p class="muted">Sem compras de clientes para este recorte.</p>';
+  const take=(list,score)=>list.reduce((a,b)=>score(b)>score(a)?b:a);
+  const first=take(choices,c=>c.count);
+  const picks=[first],others=choices.filter(c=>c!==first&&c.profit>0);
+  if(others.length)picks.push(take(others,c=>c.profit));
+  const remaining=others.filter(c=>!picks.includes(c));
+  const rising=remaining.filter(c=>c.baseline>0&&c.comparable>c.baseline);
+  if(remaining.length)picks.push(rising.length?take(rising,c=>c.comparable-c.baseline):take(remaining,c=>c.profit));
+  return picks.map(cat=>{
+    // Compare three consecutive hours on the same weekday, per observed date.
+    let best=null;
+    for(const d of scope.days)if(dates[d])for(let h=0;h<=21;h++){
+      const slot=d*24+h;
+      const value=(cat.slots[slot]+cat.slots[slot+1]+cat.slots[slot+2])/dates[d];
+      if(!best||value>best.value)best={d,h,slot,value};
     }
-  }
-  const pair=[...pairCounts].sort((a,b)=>b[1]-a[1])[0];
-  const peakDay=dayNames[Math.floor(peak/24)].toLowerCase();
-  const what=targetItem||categoryLabel(target.name).toLowerCase();
-  const supply=target.name==="FOOD"?"Programe um lote de "+what:
-    target.name.startsWith("BEBIDAS")?"Confira o estoque gelado de "+what:"Confira a disponibilidade de "+what;
-  let action=`${supply} antes do pico de ${peakDay}, às ${peak%24}h.`;
-  if(pair){
-    const item=sales.products[pair[0]][1].toLocaleLowerCase("pt-BR");
-    if(pair[1]/target.receipts<.03)action+=` Priorize a disponibilidade do item principal. Mesmo o complemento mais frequente, ${item}, aparece em apenas ${pct(pair[1],target.receipts)} dos cupons da categoria.`;
-    else action+=` Planeje a reposição de ${item} junto com a da categoria. É o produto de outra categoria que mais aparece nesses mesmos cupons (${pct(pair[1],target.receipts)}).`;
-  }
-  action+=` Compare o lucro bruto de ${categoryLabel(target.name).toLowerCase()} nesse horário com o das mesmas faixas nas semanas anteriores${target.name==="FOOD"?" e registre a sobra do lote":""}.`;
-  return [profile,action];
+    if(!best||best.value<=0)return "";
+    const items=new Map();
+    let revenue=0,profit=0;
+    for(const [slot,id,qty,v,g] of rows){
+      if(productCats[id]!==cat||slot<best.slot||slot>best.slot+2)continue;
+      if(!items.has(id))items.set(id,accumulator());
+      add(items.get(id),qty,v,g);revenue+=v;profit+=g;
+    }
+    const [id]=take([...items],entry=>entry[1].qty);
+    const window=dayNames[best.d]+" · "+best.h+"h–"+(best.h+3)+"h";
+    const label=categoryLabel(cat.name),name=productName(id);
+
+    const ice=/^gelo(?: |$)/.test(name);
+    const title=ice?"Quem passa para levar gelo":purchaseNames[cat.name]||"Quem procura "+label.toLowerCase();
+    const single=cat.solo/cat.count;
+    let profile=single>=.65?`O cliente costuma entrar para resolver uma compra específica. Em ${pct(cat.solo,cat.count)} dos cupons com ${label.toLowerCase()}, o cliente leva apenas itens dessa categoria.`:
+      single<=.35?`A compra costuma fazer parte de uma cesta maior. Em ${pct(cat.count-cat.solo,cat.count)} dos cupons com ${label.toLowerCase()}, o cliente leva também outra categoria.`:
+      `Há duas ocasiões de compra. Em ${pct(cat.solo,cat.count)} dos cupons com ${label.toLowerCase()}, o cliente resolve só essa compra. Nos demais, acrescenta itens de outras categorias.`;
+    profile+=` De cada 100 cupons da loja, ${formatNum.format(Math.round(100*cat.count/receipts))} incluem a categoria. No pico, ${name} lidera em unidades.`;
+    const businessDays=dates.slice(0,5).reduce((a,b)=>a+b,0),weekendDays=dates[5]+dates[6];
+    if(businessDays&&weekendDays){
+      const weekdayRate=cat.days.slice(0,5).reduce((a,b)=>a+b,0)/businessDays;
+      const weekendRate=(cat.days[5]+cat.days[6])/weekendDays;
+      if(weekdayRate>0&&Math.abs(weekendRate/weekdayRate-1)>=.2)
+        profile+=` Por dia, essa compra aparece ${pct(Math.abs(weekendRate-weekdayRate),weekdayRate)} ${weekendRate>weekdayRate?"mais":"menos"} no fim de semana.`;
+    }
+    let economics=`Nessas três horas, a média por dia observado é de ${money(best.value)} em vendas e ${money(profit/dates[best.d])} de lucro bruto. A margem é de ${pct(profit,revenue)}.`;
+    if(cat.baseline>0){
+      const change=(cat.comparable-cat.baseline)/cat.baseline;
+      economics+=` No recorte, o faturamento registrado da categoria ficou ${formatPct.format(Math.abs(change)*100)}% ${change<0?"abaixo":"acima"} de 2025, ajustando a quantidade de cada dia da semana.`;
+    }
+    // Product affinity is available by weekday. Financial measures also have hour.
+    const pairs=new Map();let weekdayCount=0;
+    for(const m of scope.months)for(const row of basket.slots[m*7+best.d]){
+      if(!(row[0]&cat.bit))continue;
+      if(allowedProducts&&!row.slice(2).some(pid=>eligible[pid]&&productCats[pid]===cat))continue;
+      weekdayCount+=row[1];
+      for(let j=2;j<row.length;j++){
+        const pid=row[j],other=productCats[pid];
+        if(!other||other===cat||other.name==="USO E CONSUMO - DESPESAS")continue;
+        const totals=itemTotals[pid];
+        if(totals.sales>0&&totals.profit/totals.sales>Math.max(0,profit/revenue))
+          pairs.set(pid,(pairs.get(pid)||0)+row[1]);
+      }
+    }
+    const pair=pairs.size?take([...pairs],e=>e[1]):null;
+    const supply=cat.name==="FOOD"?`Prepare um lote de ${name} antes das ${best.h}h e ajuste o próximo pela venda e pela sobra.`:
+      cat.name.startsWith("BEBIDAS")?(ice?`Reforce o estoque de ${name} no freezer antes do pico.`:`Reponha ${name} na geladeira antes do pico.`):
+      `Antecipe a reposição de ${name} para o início dessa faixa.`;
+    let action=supply;
+    if(pair&&weekdayCount&&pair[1]/weekdayCount>=.02){
+      const companion=itemTotals[pair[0]];
+      action+=` Teste sugerir ${productName(pair[0])} nessa compra. O item já aparece em ${pct(pair[1],weekdayCount)} desses cupons nesse dia da semana e tem margem de ${pct(companion.profit,companion.sales)} no período.`;
+    }else{
+      const alternatives=[...items].filter(([pid,t])=>pid!==id&&t.sales>0&&t.profit/t.sales>Math.max(0,profit/revenue));
+      if(alternatives.length){
+        const [pid,t]=take(alternatives,e=>e[1].profit);
+        action+=` Dê visibilidade também a ${productName(pid)}, que já vende nesse horário com margem de ${pct(t.profit,t.sales)}.`;
+      }else action+=" Teste a reposição com o preço atual e acompanhe as faltas na faixa.";
+    }
+    return `<article class="portrait"><span class="tag">${html(window)}</span><h3>${html(title)}</h3><p>${html(profile)}</p><p class="evidence">${html(economics)}</p><p><strong>Ação para a loja</strong> · ${html(action)}</p></article>`;
+  }).join("");
 }
-async function storeObservations() {
-  const version=++storeObservationRequest,units=source.units.slice(),year=source.year;
-  const months=[...selection.months],days=new Set(selection.days);
-  const allowed=new Set([...selection.categories].map(i=>source.categories[i]));
-  const card=(name,body)=>`<article class="portrait"><h3>${html(name)}</h3><p>${html(body)}</p></article>`;
+async function renderPurchaseProfiles(matchingRows) {
+  const version=++profileRequest,dataset=source,year=Number(dataset.year);
+  const scope={months:[...selection.months],days:new Set(selection.days),categories:new Set([...selection.categories].map(i=>dataset.categories[i]))};
+  const selected=matchingRows&&new Set(matchingRows.map(row=>row.id));
+  const total=dataset.units.length>1;
+  $("location").textContent=total?"":storeLocations[dataset.units[0]];
+  $("profile-period").textContent=year+" · "+scope.months.length+" "+(scope.months.length===1?"mês":"meses");
+  $("portraits").textContent="Carregando os retratos de compra…";
   try{
-    const sections=await Promise.all(units.map(async unit=>{
-      const [basket,sales]=await Promise.all([fetchBasketGroups(unit,year),fetchSource(unit+"-"+year)]);
-      const [profile,action]=shopObservations(basket,sales,months,days,allowed);
-      return `<details class="observ-unit" ${units.length===1?"open":""}><summary>${html(storeNames[unit])}</summary><div class="observ-cards">${card("Perfil do cliente",profile)}${card("Sugestão do que fazer",action)}</div></details>`;
+    const sections=await Promise.all(dataset.units.map(async(unit,i)=>{
+      const [sales,basket,prior]=await Promise.all([fetchSource(unit+"-"+year),fetchBasketGroups(unit,year),
+        year===2026?fetchSource(unit+"-2025"):null]);
+      if(version!==profileRequest||dataset!==source)return "";
+      const ids=selected&&new Set(dataset.productMaps[i].flatMap((id,local)=>selected.has(id)?[local]:[]));
+      const cards=purchasePortraits(sales,basket,prior,scope,ids);
+      const grid=`<div class="portraits">${cards}</div>`;
+      return total?`<details class="observ-unit"><summary>${html(storeNames[unit])}</summary><p class="muted">${html(storeLocations[unit])}</p>${grid}</details>`:grid;
     }));
-    if(version===storeObservationRequest)$("actions").innerHTML=sections.join("");
-  }catch(error){if(version===storeObservationRequest)$("actions").textContent="Não foi possível carregar as observações deste recorte.";}
+    if(version===profileRequest&&dataset===source)$("portraits").innerHTML=sections.join("");
+  }catch(error){if(version===profileRequest&&dataset===source)$("portraits").textContent="Não foi possível carregar os retratos deste recorte.";}
 }
 
 async function fetchSource(key) {
@@ -288,7 +311,6 @@ async function loadSource() {
     };
     if(focus!==null && !selection.categories.has(source.products[focus][0])) focus=null;
     setupFilters();
-    renderPortraits();
     $("dashboard-loading").hidden=true;
     $("dashboard").hidden=false;
     render();
@@ -478,12 +500,13 @@ function render() {
     (focus===null || row.id===focus)
   );
   current=currentRows.length===currentRanking.length?base:aggregate(new Set(currentRows.map(row=>row.id)));
-  storeObservations();
+  const matchingRows=query || selectedClass || focus!==null ? currentRows : null;
+  renderPurchaseProfiles(matchingRows);
   renderKpis(current);
   renderUnitTotals(current);
   renderCharts(current);
   abcTable(currentRanking,currentRows);
-  renderAffinity(source, selection, query || selectedClass || focus!==null ? currentRows : null);
+  renderAffinity(source, selection, matchingRows);
 }
 
 function csvExport() {
