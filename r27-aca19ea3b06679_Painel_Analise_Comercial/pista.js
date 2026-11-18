@@ -29,7 +29,7 @@ window.pista = (() => {
 
   function data(file) {
     if (elements.has(file)) return elements.get(file);
-    const pending=fetch(`${file}.json`).then(response=>{
+    const pending=fetch(`${file}.json?v=20261118-pista2`).then(response=>{
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
     }).catch(error=>{
