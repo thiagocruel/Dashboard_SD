@@ -83,7 +83,7 @@ const quarterPlans={
 function showQuarterPlans(target,module,units){
   target.innerHTML=units.map(([slug,name])=>{
     const cards=quarterPlans[module][slug].map(([title,action],i)=>
-      `<article class="portrait"><span class="tag">${["Janeiro","Fevereiro","Março"][i]}</span><h3>${html(title)}</h3><p>${html(action)}</p></article>`).join("");
+      `<article class="portrait"><span class="tag">Ação ${i+1}</span><h3>${html(title)}</h3><p>${html(action)}</p></article>`).join("");
     return `<details class="observ-unit" ${units.length===1?"open":""}><summary>${html(name)}</summary><div class="portraits">${cards}</div></details>`;
   }).join("");
 }
