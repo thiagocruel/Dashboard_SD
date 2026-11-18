@@ -730,18 +730,20 @@ window.pista = (() => {
       return tableRow(u.name,[valid?(u.slug==="jaburuna"?"Filtros · todos os registros":u.slug==="glorimar"?"Troca consolidada":"Troca"):"Unidade sem Troca",... [1,2,3].map(g=>valid?(u.slug==="jaburuna"&&g!==3?"—":integer.format(amount(u,s.year,g))):"—"),valid?integer.format(amount(u,s.year,-1)):"—",pair&&u.common.length?signed(growth(common(2026),common(2025)),pp):"—"]);
     }).join("");
     const quantity=get("trocas-measure").value==="qty";
-    const series=quantity?(metric===-1?[
-      {groups:[1],field:7,label:"Lubrificantes (L)"},
-      {groups:[2,3],field:4,label:"Automotivos e filtros (un.)"}
-    ]:[{groups:[metric],field:metric===1?7:4,label:metric===1?"Lubrificantes (L)":"Quantidade (un.)"}]):
-      [{groups:[metric],field:6,label:"Transações"}];
+    const categories=[
+      {group:1,field:7,label:"Lubrificantes (L)"},
+      {group:2,field:4,label:"Automotivos (un.)"},
+      {group:3,field:4,label:"Filtros (un.)"}
+    ];
+    const series=quantity?categories.filter(c=>metric===-1||c.group===metric):
+      [{group:metric,field:6,label:"Transações"}];
     const hourLabels=sequence(24).map(h=>h+"h");
     const axes=["hours","week"];
     for(const axis of axes)get("trocas-"+axis).replaceChildren();
-    const matrices=series.map(({groups,field,label})=>{
+    const matrices=series.map(({group,field,label})=>{
       const grid=sequence(7).map(()=>Array(24).fill(0));
       const dates=sequence(7).map(d=>available.reduce((sum,u)=>sum+detailDays(u.slug,s.year,d),0));
-      for(const u of available)for(const group of groups)for(const row of read(u,s.year,group)){
+      for(const u of available)for(const row of read(u,s.year,group)){
         if(row[2]>=0)grid[row[1]][row[2]]+=row[field];
       }
       const daily=grid.map((day,d)=>dates[d]?day.reduce((a,b)=>a+b,0)/dates[d]:null);
