@@ -6,10 +6,10 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Indicadores, perfis de clientes e estratégias de pista e lojas.">
 <title>GSD | Painel Comercial 2027</title>
-<link rel="stylesheet" href="style.css?v=troca-filiais-p75">
+<link rel="stylesheet" href="style.css?v=troca-lucro-dia">
 <script src="planos-1t27.js?v=acoes1t27" defer></script>
 <script src="affinity.js?v=20261118-pista2" defer></script>
-<script src="pista.js?v=troca-filiais-p75" defer></script>
+<script src="pista.js?v=troca-lucro-dia" defer></script>
 <script src="app.js?v=perfis5" defer></script>
 </head>
 <body>
@@ -87,6 +87,13 @@
         <p class="caption">Cada coluna representa uma filial com Troca. A cor e o número mostram o 75º percentil (P75) das transações diárias da filial para aquele dia da semana. O cálculo inclui as datas observadas com zero vendas.</p>
         <div class="scroll" id="pista-trocas-p75"></div>
         <p class="caption" id="pista-trocas-p75-scale"></p>
+      </div>
+      <div class="troca-map" aria-labelledby="pista-trocas-lucro-title">
+        <h3 id="pista-trocas-lucro-title">Lucro bruto médio diário da Troca</h3>
+        <p class="caption">Receita líquida dos itens menos o custo da mercadoria vendida, dividida pelas datas observadas de cada filial e dia da semana. Dias sem venda entram com zero. Valores em reais, antes de folha e despesas operacionais.</p>
+        <div class="scroll" id="pista-trocas-lucro"></div>
+        <p class="caption" id="pista-trocas-lucro-cobertura"></p>
+        <details><summary>Como o custo foi apurado</summary><p class="caption">A primeira referência é o custo unitário do produto no documento de venda. Para itens sem esse vínculo, usamos o custo médio ponderado pelas quantidades do mesmo produto na filial, primeiro no dia e depois no mês. Sem referência no mês, usamos o dia com custo conhecido mais próximo, até 31 dias. Itens sem referência ficam fora do lucro apurado. O detalhe de cada valor mostra a cobertura de custo sobre a receita.</p></details>
       </div>
       <label class="field">Medida dos gráficos e da tabela por horário<select id="pista-trocas-measure"><option value="tx">Transações médias</option><option value="qty">Quantidade média vendida</option></select></label>
       <p class="caption">IDs de venda distintos. Uma venda com mais de uma categoria conta uma vez no total. As médias por dia e hora usam as datas observadas da unidade, incluindo datas sem venda na Troca. No consolidado, a média é por unidade e dia. * Variações usam unidades identificadas nos dois anos e meses completos comuns. A ocupação em percentual depende da jornada disponível e da duração do atendimento.</p>

@@ -25,7 +25,7 @@ window.pista = (() => {
   let selectedMonths = new Set(sequence(10));
   let selectedDays = new Set(sequence(7));
   const selectedGroups = new Set([0]);
-  let detail, trocas, compras, trocasDiarias;
+  let detail, trocas, compras, trocasDiarias, trocasLucro;
 
   function data(file) {
     if (elements.has(file)) return elements.get(file);
@@ -131,7 +131,7 @@ window.pista = (() => {
   async function activate() {
     if (ready) return;
     try {
-      [catalog,detail,trocas,compras,trocasDiarias]=await Promise.all([data("pista-index"),data("pista-detail"),data("pista-trocas"),data("pista-compras"),data("pista-trocas-diarias")]);
+      [catalog,detail,trocas,compras,trocasDiarias,trocasLucro]=await Promise.all([data("pista-index"),data("pista-detail"),data("pista-trocas"),data("pista-compras"),data("pista-trocas-diarias"),data("pista-trocas-lucro")]);
       if(ready) return;
       bind();
       await load();
@@ -763,6 +763,46 @@ window.pista = (() => {
     scale.innerHTML=legend+" · — sem datas ou categoria não aplicável";
   }
 
+  function drawTrocaProfit(s,units,metric) {
+    const region=get("trocas-lucro"), note=get("trocas-lucro-cobertura");
+    if(!units.length){
+      region.textContent="Unidade sem Troca no recorte.";
+      note.textContent="";
+      return;
+    }
+    const emptyDay=dates=>({dates,profit:0,exact:0,estimated:0,missing:0,missingItems:0});
+    function add(target,source) {
+      for(const key of Object.keys(target))target[key]+=source[key];
+      return target;
+    }
+    function coverage(v) {
+      const sales=v.exact+v.estimated+v.missing;
+      if(!sales)return "Sem vendas no recorte.";
+      return `Receita com custo no documento: ${sharePct.format(v.exact/sales)} · custo estimado: ${sharePct.format(v.estimated/sales)} · sem custo identificado: ${sharePct.format(v.missing/sales)}.`;
+    }
+    const columns=units.map(({slug,name})=>{
+      const applicable=slug!=="jaburuna"||metric===-1||metric===3;
+      const days=sequence(7).map(d=>emptyDay(detailDays(slug,s.year,d)));
+      for(const [m,d,category,exactProfit,estimatedProfit,exact,estimated,missing,missingItems] of trocasLucro.units[slug][s.year]){
+        if(!selectedMonths.has(m)||!selectedDays.has(d)||(metric!==-1&&metric!==category))continue;
+        add(days[d],{dates:0,profit:exactProfit+estimatedProfit,exact,estimated,missing,missingItems});
+      }
+      return {name,days,applicable,period:days.reduce(add,emptyDay(0))};
+    });
+    function valueCell(v,column,period) {
+      if(!column.applicable||!v.dates)return `<td title="${column.applicable?"Sem datas observadas":"Jaburuna registra apenas filtros"}">—</td>`;
+      const tip=`${column.name} · ${period} · ${v.dates} datas observadas. ${coverage(v)}`;
+      if(v.missingItems&&!v.exact&&!v.estimated)return `<td aria-label="${html(tip)}" title="${html(tip)}">Sem custo</td>`;
+      const amount=cash.format(v.profit/(100*v.dates));
+      return `<td title="${html(tip)}" aria-label="${html(tip+' '+amount)}">${amount}${v.missingItems?' *':''}</td>`;
+    }
+    const body=weekdays.map((day,d)=>`<tr><th scope="row">${day}</th>${columns.map(col=>valueCell(col.days[d],col,day)).join("")}</tr>`).join("");
+    const footer=columns.map(col=>valueCell(col.period,col,"Período selecionado")).join("");
+    region.innerHTML=`<table class="pista-table troca-profit" aria-labelledby="pista-trocas-lucro-title"><thead>${tableHead(["Dia da semana",...columns.map(col=>col.name)])}</thead><tbody>${body}</tbody><tfoot><tr><th scope="row">Média diária do período</th>${footer}</tr></tfoot></table>`;
+    const total=columns.filter(col=>col.applicable).reduce((sum,col)=>add(sum,col.period),emptyDay(0));
+    note.textContent=coverage(total)+(total.missingItems?" * Média parcial. Itens sem custo identificado foram excluídos.":"");
+  }
+
   function drawTrocas(s) {
     const record=(u,y)=>trocas.units[u.slug][y];
     const read=(u,y,category)=>record(u,y).rows.filter(([m,d,,g])=>selectedMonths.has(m)&&selectedDays.has(d)&&g===category);
@@ -771,6 +811,7 @@ window.pista = (() => {
     get("trocas-kpis").closest("section").querySelectorAll(".chart-pair, #pista-trocas-heat").forEach(node=>node.hidden=!s.units.some(u=>record(u,s.year).identified));
     const available=s.units.filter(u=>record(u,s.year).identified);
     drawTrocaMap(s,available,metric);
+    drawTrocaProfit(s,available,metric);
     const totalDays=available.reduce((n,u)=>n+detailDays(u.slug,s.year),0);
     const rows=available.flatMap(u=>read(u,s.year,metric));
     const transactions=rows.reduce((n,r)=>n+r[6],0),sales=rows.reduce((n,r)=>n+r[5],0);
