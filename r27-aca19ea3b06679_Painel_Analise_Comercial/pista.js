@@ -29,7 +29,7 @@ window.pista = (() => {
 
   function data(file) {
     if (elements.has(file)) return elements.get(file);
-    const pending=fetch(`${file}.json?v=20261118-pista2`).then(response=>{
+    const pending=fetch(`${file}.json?v=${file==="pista-trocas"?"troca-p75":"20261118-pista2"}`).then(response=>{
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
     }).catch(error=>{
@@ -720,6 +720,51 @@ window.pista = (() => {
     }).join("");
     drawTrocas(s);
   }
+  function transactionP75(positiveCounts, observations) {
+    // Index i holds the number of unit-dates with exactly i + 1 sales.
+    const zeros=observations-positiveCounts.reduce((sum,count)=>sum+count,0);
+    const position=(observations-1)*0.75;
+    function at(rank) {
+      let cumulative=zeros;
+      if(rank<cumulative)return 0;
+      for(let i=0;i<positiveCounts.length;i++){
+        cumulative+=positiveCounts[i];
+        if(rank<cumulative)return i+1;
+      }
+    }
+    const lower=at(Math.floor(position)), upper=at(Math.ceil(position));
+    return lower+(upper-lower)*(position-Math.floor(position));
+  }
+
+  function drawTrocaMap(s,available,metric,read) {
+    const units=available.filter(u=>u.slug!=="jaburuna"||metric===-1||metric===3);
+    const map=get("trocas-p75"), scale=get("trocas-p75-scale");
+    const observations=sequence(7).map(d=>units.reduce((sum,u)=>sum+detailDays(u.slug,s.year,d),0));
+    if(!observations.some(Boolean)){
+      map.textContent=!available.length?"Unidade sem Troca no recorte.":!units.length?"No Jaburuna, a Troca registra apenas filtros.":"Sem datas observadas no recorte.";
+      scale.replaceChildren();
+      return;
+    }
+    const histograms=sequence(7).map(()=>sequence(24).map(()=>[]));
+    for(const u of units)for(const row of read(u,s.year,metric)){
+      const [,day,hour]=row;
+      const counts=histograms[day][hour];
+      row[9].forEach((count,i)=>{counts[i]=(counts[i]||0)+count;});
+    }
+    const grid=histograms.map((hours,d)=>hours.map(counts=>observations[d]?transactionP75(counts,observations[d]):null));
+    const peak=Math.max(0,...grid.flat().filter(Number.isFinite));
+    const headings=sequence(24).map(hour=>String(hour).padStart(2,"0")+"h");
+    const body=grid.map((hours,d)=>`<tr><th scope="row">${shortDays[d]}</th>${hours.map((v,h)=>{
+      if(v===null)return '<td title="Sem datas observadas">—</td>';
+      const t=peak?v/peak:0;
+      const color=[185+50*t,226-143*t,255-168*t].map(Math.round).join(" ");
+      const label=`${weekdays[d]}, ${headings[h]} · P75: ${number.format(v)} · ${observations[d]} observações (unidade/dia)`;
+      return `<td style="background:rgb(${color});color:#101b2b" title="${html(label)}">${number.format(v)}</td>`;
+    }).join("")}</tr>`).join("");
+    map.innerHTML=`<table class="pista-heat troca-heat" aria-labelledby="pista-trocas-p75-title"><thead>${tableHead(["Dia",...headings])}</thead><tbody>${body}</tbody></table>`;
+    scale.innerHTML=peak?`0 <span class="troca-gradient" aria-hidden="true"></span> ${number.format(peak)} transações (maior P75 do recorte) · — sem datas`:"P75 igual a zero em todos os horários observados. · — sem datas";
+  }
+
   function drawTrocas(s) {
     const record=(u,y)=>trocas.units[u.slug][y];
     const read=(u,y,category)=>record(u,y).rows.filter(([m,d,,g])=>selectedMonths.has(m)&&selectedDays.has(d)&&g===category);
@@ -727,6 +772,7 @@ window.pista = (() => {
     const metric=Number(get("trocas-category").value);
     get("trocas-kpis").closest("section").querySelectorAll(".chart-pair, #pista-trocas-heat").forEach(node=>node.hidden=!s.units.some(u=>record(u,s.year).identified));
     const available=s.units.filter(u=>record(u,s.year).identified);
+    drawTrocaMap(s,available,metric,read);
     const totalDays=available.reduce((n,u)=>n+detailDays(u.slug,s.year),0);
     const rows=available.flatMap(u=>read(u,s.year,metric));
     const transactions=rows.reduce((n,r)=>n+r[6],0),sales=rows.reduce((n,r)=>n+r[5],0);

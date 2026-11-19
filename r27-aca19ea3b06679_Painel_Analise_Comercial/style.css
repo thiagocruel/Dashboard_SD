@@ -71,3 +71,10 @@ main{min-width:0;max-width:1600px;width:100%;margin:auto;padding:0 27px 25px}.to
 .observ-cards .portrait p:empty{display:none}
 
 .observ-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.observ-cards .portrait p:last-child{margin-bottom:0}@media(max-width:760px){.observ-cards{grid-template-columns:1fr}}
+
+.troca-map{margin:18px 0}
+.troca-map .scroll{max-width:100%;overflow-x:auto}
+.troca-map .troca-heat{min-width:860px;table-layout:fixed}
+.troca-heat td,.troca-heat th{height:27px;text-align:center;border-radius:3px;font-size:12px;font-variant-numeric:tabular-nums}
+.troca-heat th:first-child{width:40px;position:sticky;left:0;background:var(--surface,#142032);z-index:1}
+.troca-gradient{display:inline-block;width:86px;height:9px;margin:0 5px;border-radius:3px;background:linear-gradient(to right,#b9e2ff,#eb5357)}
