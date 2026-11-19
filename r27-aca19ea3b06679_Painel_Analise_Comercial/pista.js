@@ -25,7 +25,7 @@ window.pista = (() => {
   let selectedMonths = new Set(sequence(10));
   let selectedDays = new Set(sequence(7));
   const selectedGroups = new Set([0]);
-  let detail, trocas, compras;
+  let detail, trocas, compras, trocasDiarias;
 
   function data(file) {
     if (elements.has(file)) return elements.get(file);
@@ -131,7 +131,7 @@ window.pista = (() => {
   async function activate() {
     if (ready) return;
     try {
-      [catalog,detail,trocas,compras]=await Promise.all([data("pista-index"),data("pista-detail"),data("pista-trocas"),data("pista-compras")]);
+      [catalog,detail,trocas,compras,trocasDiarias]=await Promise.all([data("pista-index"),data("pista-detail"),data("pista-trocas"),data("pista-compras"),data("pista-trocas-diarias")]);
       if(ready) return;
       bind();
       await load();
@@ -720,49 +720,47 @@ window.pista = (() => {
     }).join("");
     drawTrocas(s);
   }
-  function transactionP75(positiveCounts, observations) {
-    // Index i holds the number of unit-dates with exactly i + 1 sales.
-    const zeros=observations-positiveCounts.reduce((sum,count)=>sum+count,0);
-    const position=(observations-1)*0.75;
-    function at(rank) {
-      let cumulative=zeros;
-      if(rank<cumulative)return 0;
-      for(let i=0;i<positiveCounts.length;i++){
-        cumulative+=positiveCounts[i];
-        if(rank<cumulative)return i+1;
-      }
-    }
-    const lower=at(Math.floor(position)), upper=at(Math.ceil(position));
-    return lower+(upper-lower)*(position-Math.floor(position));
+  function dailyP75(counts, dates) {
+    const values=counts.concat(Array(dates-counts.length).fill(0)).sort((a,b)=>a-b);
+    const rank=0.75*(dates-1);
+    const lower=values[Math.floor(rank)], upper=values[Math.ceil(rank)];
+    return lower+(upper-lower)*(rank-Math.floor(rank));
   }
 
-  function drawTrocaMap(s,available,metric,read) {
-    const units=available.filter(u=>u.slug!=="jaburuna"||metric===-1||metric===3);
+  function drawTrocaMap(s,units,metric) {
     const map=get("trocas-p75"), scale=get("trocas-p75-scale");
-    const observations=sequence(7).map(d=>units.reduce((sum,u)=>sum+detailDays(u.slug,s.year,d),0));
-    if(!observations.some(Boolean)){
-      map.textContent=!available.length?"Unidade sem Troca no recorte.":!units.length?"No Jaburuna, a Troca registra apenas filtros.":"Sem datas observadas no recorte.";
+    if(!units.length){
+      map.textContent="Unidade sem Troca no recorte.";
       scale.replaceChildren();
       return;
     }
-    const histograms=sequence(7).map(()=>sequence(24).map(()=>[]));
-    for(const u of units)for(const row of read(u,s.year,metric)){
-      const [,day,hour]=row;
-      const counts=histograms[day][hour];
-      row[9].forEach((count,i)=>{counts[i]=(counts[i]||0)+count;});
-    }
-    const grid=histograms.map((hours,d)=>hours.map(counts=>observations[d]?transactionP75(counts,observations[d]):null));
-    const peak=Math.max(0,...grid.flat().filter(Number.isFinite));
-    const headings=sequence(24).map(hour=>String(hour).padStart(2,"0")+"h");
-    const body=grid.map((hours,d)=>`<tr><th scope="row">${shortDays[d]}</th>${hours.map((v,h)=>{
-      if(v===null)return '<td title="Sem datas observadas">—</td>';
-      const t=peak?v/peak:0;
+    const field=metric===-1?2:metric+2;
+    const columns=units.map(({slug,name})=>{
+      const applicable=slug!=="jaburuna"||metric===-1||metric===3;
+      const days=sequence(7).map(()=>[]);
+      for(const row of trocasDiarias[slug][s.year]){
+        if(selectedMonths.has(row[0])&&selectedDays.has(row[1]))days[row[1]].push(row[field]);
+      }
+      const cells=days.map((counts,d)=>{
+        const dates=detailDays(slug,s.year,d);
+        const value=applicable&&dates?dailyP75(counts,dates):null;
+        return {value,dates};
+      });
+      return {name,applicable,cells};
+    });
+    const peak=Math.max(0,...columns.flatMap(col=>col.cells.map(cell=>cell.value??0)));
+    const body=shortDays.map((day,d)=>`<tr><th scope="row">${day}</th>${columns.map(col=>{
+      const {value,dates}=col.cells[d];
+      if(value===null)return `<td title="${col.applicable?"Sem datas observadas":"Jaburuna registra apenas filtros"}">—</td>`;
+      const t=peak?value/peak:0;
       const color=[185+50*t,226-143*t,255-168*t].map(Math.round).join(" ");
-      const label=`${weekdays[d]}, ${headings[h]} · P75: ${number.format(v)} · ${observations[d]} observações (unidade/dia)`;
-      return `<td style="background:rgb(${color});color:#101b2b" title="${html(label)}">${number.format(v)}</td>`;
+      const label=`${col.name} · ${weekdays[d]} · P75: ${number.format(value)} transações por dia · ${dates} datas observadas`;
+      return `<td style="background:rgb(${color});color:#101b2b" title="${html(label)}">${number.format(value)}</td>`;
     }).join("")}</tr>`).join("");
-    map.innerHTML=`<table class="pista-heat troca-heat" aria-labelledby="pista-trocas-p75-title"><thead>${tableHead(["Dia",...headings])}</thead><tbody>${body}</tbody></table>`;
-    scale.innerHTML=peak?`0 <span class="troca-gradient" aria-hidden="true"></span> ${number.format(peak)} transações (maior P75 do recorte) · — sem datas`:"P75 igual a zero em todos os horários observados. · — sem datas";
+    map.innerHTML=`<table class="pista-heat troca-heat" aria-labelledby="pista-trocas-p75-title"><thead>${tableHead(["Dia",...columns.map(col=>col.name)])}</thead><tbody>${body}</tbody></table>`;
+    const hasValues=columns.some(col=>col.cells.some(cell=>cell.value!==null));
+    const legend=peak?`0 <span class="troca-gradient" aria-hidden="true"></span> ${number.format(peak)} transações por dia (maior P75 do recorte)`:hasValues?"P75 igual a zero nas células observadas.":"Sem observações para a seleção.";
+    scale.innerHTML=legend+" · — sem datas ou categoria não aplicável";
   }
 
   function drawTrocas(s) {
@@ -772,7 +770,7 @@ window.pista = (() => {
     const metric=Number(get("trocas-category").value);
     get("trocas-kpis").closest("section").querySelectorAll(".chart-pair, #pista-trocas-heat").forEach(node=>node.hidden=!s.units.some(u=>record(u,s.year).identified));
     const available=s.units.filter(u=>record(u,s.year).identified);
-    drawTrocaMap(s,available,metric,read);
+    drawTrocaMap(s,available,metric);
     const totalDays=available.reduce((n,u)=>n+detailDays(u.slug,s.year),0);
     const rows=available.flatMap(u=>read(u,s.year,metric));
     const transactions=rows.reduce((n,r)=>n+r[6],0),sales=rows.reduce((n,r)=>n+r[5],0);

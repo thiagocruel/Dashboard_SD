@@ -6,10 +6,10 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Indicadores, perfis de clientes e estratégias de pista e lojas.">
 <title>GSD | Painel Comercial 2027</title>
-<link rel="stylesheet" href="style.css?v=troca-p75">
+<link rel="stylesheet" href="style.css?v=troca-filiais-p75">
 <script src="planos-1t27.js?v=acoes1t27" defer></script>
 <script src="affinity.js?v=20261118-pista2" defer></script>
-<script src="pista.js?v=troca-p75" defer></script>
+<script src="pista.js?v=troca-filiais-p75" defer></script>
 <script src="app.js?v=perfis5" defer></script>
 </head>
 <body>
@@ -83,8 +83,8 @@
       <h3>Resultado por unidade · transações</h3><div class="scroll"><table class="pista-table"><thead><tr><th>Unidade</th><th>Escopo</th><th>Lubrificantes</th><th>Automotivos</th><th>Filtros</th><th>Total sem duplicar</th><th>Δ total 2026/25*</th></tr></thead><tbody id="pista-trocas-status"></tbody></table></div>
       <label class="field">Categoria da Troca<select id="pista-trocas-category"><option value="-1">Total</option><option value="1">Lubrificantes</option><option value="2">Automotivos</option><option value="3">Filtros</option></select></label>
       <div class="troca-map" aria-labelledby="pista-trocas-p75-title">
-        <h3 id="pista-trocas-p75-title">Mapa de calor da Troca · transações por hora e dia</h3>
-        <p class="caption">Cada célula mostra o 75º percentil (P75) das transações naquele dia da semana e horário. Entram as datas observadas, inclusive as com zero vendas. No consolidado, cada unidade e data é uma observação.</p>
+        <h3 id="pista-trocas-p75-title">Mapa de calor da Troca · transações por filial e dia da semana</h3>
+        <p class="caption">Cada coluna representa uma filial com Troca. A cor e o número mostram o 75º percentil (P75) das transações diárias da filial para aquele dia da semana. O cálculo inclui as datas observadas com zero vendas.</p>
         <div class="scroll" id="pista-trocas-p75"></div>
         <p class="caption" id="pista-trocas-p75-scale"></p>
       </div>
