@@ -1,7 +1,7 @@
 (() => {
-  window.__DASHBOARD_COMPARISON_VERSION__ = 13;
+  window.__DASHBOARD_COMPARISON_VERSION__ = 14;
 
-  const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET"];
+  const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT"];
   const METRICS = {
     LITRAGEM: { key: "volume", label: "Litragem", format: "liters" },
     TRANSACOES: { key: "transactions", label: "Transações", format: "integer" },
@@ -33,8 +33,8 @@
   const FINANCIAL_KEYS = new Set(["netProfit", "fuelNetProfit", "storeNetProfit"]);
 
   function effectiveFinancialMonths(months) {
-    const latestComparableMonth = Number(window.DRE_DATA?.meta?.latestComparableMonth?.split("-")?.[1] || 8);
-    return months.filter((month) => month <= latestComparableMonth);
+    const latestDreMonth = Number(window.DRE_DATA?.meta?.latestDreMonth?.split("-")?.[1] || 10);
+    return months.filter((month) => month <= latestDreMonth);
   }
 
   function financialValue(rows, key) {
@@ -70,6 +70,7 @@
 
   function selectedMonths() {
     const period = normalize(document.querySelector(".selection-summary strong")?.textContent);
+    if (/JAN.*OUT/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     if (/JAN.*SET/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9];
     if (/NENHUM/.test(period)) return [];
     return MONTH_NAMES.map((label, index) => label && new RegExp(`\\b${label}\\b`).test(period) ? index : null).filter(Boolean);
@@ -93,6 +94,16 @@
 
   function metricValue(rows, key) {
     if (!rows.length) return null;
+    const requiredFields = {
+      volume: ["volume"],
+      transactions: ["fuelTransactions"],
+      mixGa: ["gaLiters", "gcLiters"],
+      diversos: ["diverseRevenue"],
+      faturamentoLoja: ["storeRevenue"],
+      margemLoja: ["storeRevenue", "storeProfit"],
+      occupancy: ["equivalentDays", "proportionalDays"],
+    }[key] || [];
+    if (rows.some((row) => requiredFields.some((field) => row.actual?.[field] == null))) return null;
     if (key === "volume") return sum(rows, "volume");
     if (key === "transactions") return sum(rows, "fuelTransactions");
     if (key === "mixGa") {
@@ -381,7 +392,10 @@
     executiveGrid.classList.remove("occupancy-dashboard", "turnover-dashboard");
     executiveGrid.classList.add("comparison-dashboard");
     const financialMonths = effectiveFinancialMonths(months);
-    const financialPeriod = periodLabel(financialMonths);
+    const selectedFinancialRows = financialRows(companyIds, financialMonths);
+    const comparableFinancialMonths = commonFinancialMonths(selectedFinancialRows, financialMonths);
+    const financialPeriod = periodLabel(comparableFinancialMonths);
+    const currentFinancialPeriod = periodLabel(financialMonths);
     const isFinancial = FINANCIAL_KEYS.has(metric.key);
     const branchTitle = metric.key === "turnover"
       ? "Turnover por centro de negócio"
@@ -394,7 +408,7 @@
     setPanelHeader(
       monthlyPanel,
       "EVOLUÇÃO MENSAL",
-      isFinancial ? `${metric.label} mês a mês · base comparável ${financialPeriod}` : `${metric.label} mês a mês`,
+      isFinancial ? `${metric.label} mês a mês · 2026 até ${currentFinancialPeriod}; comparação até ${financialPeriod}` : `${metric.label} mês a mês`,
     );
     const monthlyBody = monthlyPanel.querySelector(".monthly-comparison-chart");
     monthlyBody.innerHTML = monthlyItems === null
@@ -409,8 +423,8 @@
     if (productivityTitle) productivityTitle.textContent = "PRODUTIVIDADE";
     const updateStamp = document.querySelector(".update-stamp");
     if (updateStamp) {
-      if (updateStamp.querySelector("span")) updateStamp.querySelector("span").textContent = "DRE - Dados até Ago/26";
-      if (updateStamp.querySelector("strong")) updateStamp.querySelector("strong").textContent = "Comercial - Dados até Set/26";
+      if (updateStamp.querySelector("span")) updateStamp.querySelector("span").textContent = "DRE - Dados até Out/26";
+      if (updateStamp.querySelector("strong")) updateStamp.querySelector("strong").textContent = "Comercial - Dados até Out/26";
     }
     document.querySelectorAll(".primary-button").forEach((button) => {
       if (normalize(button.textContent).includes("EXPORTAR")) button.remove();

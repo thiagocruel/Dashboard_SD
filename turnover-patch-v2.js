@@ -1,5 +1,5 @@
 (() => {
-  window.__TURNOVER_PATCH_VERSION__ = 11;
+  window.__TURNOVER_PATCH_VERSION__ = 12;
 
   const SOURCE = {
     2025: {
@@ -32,7 +32,7 @@
     },
   };
 
-  const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET"];
+  const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT"];
   const normalize = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
   const format = (value) => `${value.toFixed(2).replace(".", ",")}%`;
   const mean = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
@@ -58,6 +58,7 @@
 
   function selectedMonths() {
     const period = normalize(document.querySelector(".selection-summary strong")?.textContent);
+    if (/JAN.*OUT/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     if (/JAN.*SET/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9];
     if (/NENHUM/.test(period)) return [];
     return MONTHS.map((label, index) => new RegExp(`\\b${label}\\b`).test(period) ? index + 1 : null).filter(Boolean);

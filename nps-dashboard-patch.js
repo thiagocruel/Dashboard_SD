@@ -2,7 +2,7 @@
   const source = window.__NPS_GOOGLE_12M__;
   if (!source) return;
 
-  const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET"];
+  const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT"];
 
   const companies = [
     { id: 3946, name: "POSTO SD ARCO", city: "SOBRAL" },
@@ -42,9 +42,14 @@
 
   function selectedMonths() {
     const period = normalize(document.querySelector(".selection-summary strong")?.textContent);
-    if (!period || /JAN.*SET/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    if (!period || /JAN.*OUT/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    if (/JAN.*SET/.test(period)) return [1, 2, 3, 4, 5, 6, 7, 8, 9];
     if (/NENHUM/.test(period)) return [];
     return MONTH_NAMES.map((label, index) => label && new RegExp(`\\b${label}\\b`).test(period) ? index : null).filter(Boolean);
+  }
+
+  function availableMonths(months = selectedMonths()) {
+    return months.filter((month) => source.months?.[month]);
   }
 
   function periodLabel(months) {
@@ -127,7 +132,7 @@
     if (!card) return;
     card.classList.add("nps-card");
     const scope = selectedCompanies();
-    const months = selectedMonths();
+    const months = availableMonths(selectedMonths());
     window.__DASHBOARD_FILTER_SCOPE__ = { companyIds: scope.map((company) => company.id) };
     const stats = aggregate(scope, months);
     setText(card.querySelector("h3"), "NPS estimado — Google");
@@ -183,7 +188,7 @@
     }
 
     setText(panel.querySelector(".panel-header h3"), "NPS estimado — Google");
-    setText(panel.querySelector(".chart-legend span"), periodLabel(selectedMonths()));
+    setText(panel.querySelector(".chart-legend span"), periodLabel(availableMonths(selectedMonths())));
     setText(panel.querySelector(".chart-legend b"), "nº avaliações");
     if (reactChart) reactChart.style.display = "none";
     if (!custom) {
@@ -192,7 +197,8 @@
       panel.append(custom);
     }
 
-    const rows = selectedCompanies().map(branchStats).sort((a, b) => (b.nps ?? -Infinity) - (a.nps ?? -Infinity));
+    const months = availableMonths(selectedMonths());
+    const rows = selectedCompanies().map((company) => branchStats(company, months)).sort((a, b) => (b.nps ?? -Infinity) - (a.nps ?? -Infinity));
     const signature = rows.map((item) => `${item.id}:${item.reviews}:${item.nps}`).join("|");
     if (custom.dataset.signature !== signature) {
       custom.dataset.signature = signature;
@@ -222,7 +228,7 @@
     const item = [...document.querySelectorAll(".coverage-strip > div")].find((div) => normalize(div.querySelector("span")?.textContent) === "INDICADORES EM IMPLANTACAO");
     if (item) {
       setText(item.querySelector("span"), "COBERTURA ATUAL");
-      setText(item.querySelector("strong"), "17 postos · Comercial Jan–Set/26");
+      setText(item.querySelector("strong"), "Comercial até Out/26 · NPS até Set/26");
     }
   }
 
@@ -250,7 +256,7 @@
     if (!card?.classList.contains("selected")) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    const months = selectedMonths();
+    const months = availableMonths(selectedMonths());
     const rows = selectedCompanies().map((company) => branchStats(company, months));
     const header = ["posto", "cidade", "periodo", "avaliacoes", "media_estrelas", "promotores", "neutros", "detratores", "nps_estimado_google"];
     const body = rows.map((item) => [item.name, item.city, periodLabel(months), item.reviews, item.averageStars?.toFixed(2) ?? "", item.promoters ?? "", item.neutrals ?? "", item.detractors ?? "", item.nps?.toFixed(1) ?? ""]);
