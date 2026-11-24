@@ -1,5 +1,5 @@
 (() => {
-  window.__DASHBOARD_COMPARISON_VERSION__ = 14;
+  window.__DASHBOARD_COMPARISON_VERSION__ = 15;
 
   const MONTH_NAMES = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT"];
   const METRICS = {
@@ -31,6 +31,19 @@
   const sum = (rows, field) => rows.reduce((total, row) => total + Number(row.actual?.[field] || 0), 0);
 
   const FINANCIAL_KEYS = new Set(["netProfit", "fuelNetProfit", "storeNetProfit"]);
+  const COMMERCIAL_KEYS = new Set(["volume", "transactions", "mixGa", "diversos", "faturamentoLoja", "margemLoja", "occupancy"]);
+
+  function metricRequiredFields(key) {
+    return {
+      volume: ["volume"],
+      transactions: ["fuelTransactions"],
+      mixGa: ["gaLiters", "gcLiters"],
+      diversos: ["diverseRevenue"],
+      faturamentoLoja: ["storeRevenue"],
+      margemLoja: ["storeRevenue", "storeProfit"],
+      occupancy: ["equivalentDays", "proportionalDays"],
+    }[key] || [];
+  }
 
   function effectiveFinancialMonths(months) {
     const latestDreMonth = Number(window.DRE_DATA?.meta?.latestDreMonth?.split("-")?.[1] || 10);
@@ -94,15 +107,7 @@
 
   function metricValue(rows, key) {
     if (!rows.length) return null;
-    const requiredFields = {
-      volume: ["volume"],
-      transactions: ["fuelTransactions"],
-      mixGa: ["gaLiters", "gcLiters"],
-      diversos: ["diverseRevenue"],
-      faturamentoLoja: ["storeRevenue"],
-      margemLoja: ["storeRevenue", "storeProfit"],
-      occupancy: ["equivalentDays", "proportionalDays"],
-    }[key] || [];
+    const requiredFields = metricRequiredFields(key);
     if (rows.some((row) => requiredFields.some((field) => row.actual?.[field] == null))) return null;
     if (key === "volume") return sum(rows, "volume");
     if (key === "transactions") return sum(rows, "fuelTransactions");
@@ -123,6 +128,31 @@
       return available ? sum(rows, "proportionalDays") / available * 100 : null;
     }
     return null;
+  }
+
+  function commonMetricMonths(data, companyIds, months, key) {
+    const requiredFields = metricRequiredFields(key);
+    return months.filter((month) => [2025, 2026].every((year) => {
+      const rows = data.rows.filter((row) => row.year === year && row.month === month && companyIds.includes(row.companyId));
+      return rows.length === companyIds.length && rows.every((row) => requiredFields.every((field) => row.actual?.[field] != null));
+    }));
+  }
+
+  function commonMetricCompanyIds(data, companyIds, month, key) {
+    const requiredFields = metricRequiredFields(key);
+    return companyIds.filter((companyId) => [2025, 2026].every((year) => {
+      const row = data.rows.find((item) => item.year === year && item.month === month && item.companyId === companyId);
+      return row && requiredFields.every((field) => row.actual?.[field] != null);
+    }));
+  }
+
+  function comparableMetricRows(data, companyIds, months, key) {
+    const scopeByMonth = new Map(months.map((month) => [month, new Set(commonMetricCompanyIds(data, companyIds, month, key))]));
+    return data.rows.filter((row) => months.includes(row.month) && scopeByMonth.get(row.month)?.has(row.companyId));
+  }
+
+  function comparableMetricMonths(data, companyIds, months, key) {
+    return months.filter((month) => commonMetricCompanyIds(data, companyIds, month, key).length > 0);
   }
 
   function variation(current, previous) {
@@ -210,7 +240,8 @@
     return data.companies
       .filter((company) => companyIds.includes(company.id))
       .map((company) => {
-        const rows = data.rows.filter((row) => months.includes(row.month) && row.companyId === company.id);
+        const comparableMonths = metric.key === "nps" ? months : commonMetricMonths(data, [company.id], months, metric.key);
+        const rows = data.rows.filter((row) => comparableMonths.includes(row.month) && row.companyId === company.id);
         const current = metric.key === "nps" ? npsForCompany(company.id, months) : metricValue(rows.filter((row) => row.year === 2026), metric.key);
         const previous = metric.key === "nps" ? null : metricValue(rows.filter((row) => row.year === 2025), metric.key);
         return { label: shortName(company.name), detail: company.city, current, previous, delta: variation(current, previous) };
@@ -261,7 +292,8 @@
       });
     }
     return months.map((month) => {
-      const rows = data.rows.filter((row) => row.month === month && companyIds.includes(row.companyId));
+      const comparableCompanyIds = commonMetricCompanyIds(data, companyIds, month, metric.key);
+      const rows = data.rows.filter((row) => row.month === month && comparableCompanyIds.includes(row.companyId));
       const current = metricValue(rows.filter((row) => row.year === 2026), metric.key);
       const previous = metricValue(rows.filter((row) => row.year === 2025), metric.key);
       return { label: MONTH_NAMES[month], current, previous, delta: variation(current, previous) };
@@ -397,9 +429,12 @@
     const financialPeriod = periodLabel(comparableFinancialMonths);
     const currentFinancialPeriod = periodLabel(financialMonths);
     const isFinancial = FINANCIAL_KEYS.has(metric.key);
+    const commercialComparableMonths = COMMERCIAL_KEYS.has(metric.key) ? comparableMetricMonths(data, companyIds, months, metric.key) : [];
     const branchTitle = metric.key === "turnover"
       ? "Turnover por centro de negócio"
-      : isFinancial ? `${metric.label} por filial · base comparável ${financialPeriod}` : `${metric.label} por filial`;
+      : isFinancial ? `${metric.label} por filial · base comparável ${financialPeriod}`
+      : COMMERCIAL_KEYS.has(metric.key) ? `${metric.label} por filial · mesmos meses disponíveis em 2025 e 2026`
+      : `${metric.label} por filial`;
     const branchEyebrow = metric.key === "turnover" ? "COMPARATIVO POR CENTRO DE NEGÓCIO" : "COMPARATIVO POR FILIAL · ORDENADO POR 2026";
     setPanelHeader(branchPanel, branchEyebrow, branchTitle);
     ensureComparisonBody(branchPanel).innerHTML = comparisonChart(branchItems, metric, branchItems.length > 10);
@@ -462,6 +497,39 @@
     });
   }
 
+  function updateCommercialCards() {
+    const data = window.__DASHBOARD_DATA__;
+    if (!data?.rows) return;
+    const months = selectedMonths();
+    const companyIds = selectedCompanyIds(data);
+    const cardsByKey = new Map(
+      [...document.querySelectorAll(".kpi-card")].map((card) => {
+        const metric = METRICS[normalize(card.querySelector("h3")?.textContent)];
+        return [metric?.key, card];
+      }).filter(([key]) => COMMERCIAL_KEYS.has(key)),
+    );
+    COMMERCIAL_KEYS.forEach((key) => {
+      const card = cardsByKey.get(key);
+      if (!card) return;
+      const comparableMonths = comparableMetricMonths(data, companyIds, months, key);
+      const comparableRows = comparableMetricRows(data, companyIds, comparableMonths, key);
+      const current = metricValue(comparableRows.filter((row) => row.year === 2026), key);
+      const previous = metricValue(comparableRows.filter((row) => row.year === 2025), key);
+      const isPointDifference = key === "mixGa" || key === "margemLoja" || key === "occupancy";
+      const delta = current == null || previous == null
+        ? null
+        : isPointDifference ? current - previous : variation(current, previous);
+      const deltaText = delta == null
+        ? "SEM BASE"
+        : `${delta > 0 ? "+" : ""}${delta.toFixed(1).replace(".", ",")}${isPointDifference ? " P.P." : "%"}`;
+      const firstFoot = card.querySelector(".kpi-foot span:first-child");
+      if (!firstFoot) return;
+      const deltaClass = delta == null ? "" : delta >= 0 ? "positive" : "negative";
+      const nextHtml = `VS 2025 ${periodLabel(comparableMonths)} <b class="${deltaClass}">${deltaText}</b>`;
+      if (firstFoot.innerHTML !== nextHtml) firstFoot.innerHTML = nextHtml;
+    });
+  }
+
   function updateProductivityCard() {
     const productivityCard = document.querySelector(".productivity-card");
     const occupancyButton = [...document.querySelectorAll(".productivity-grid button")].find((button) => normalize(button.querySelector("span")?.textContent).startsWith("OCUPACAO REAL"));
@@ -494,6 +562,7 @@
       scheduled = false;
       updateFixedCopy();
       updateFinancialCards();
+      updateCommercialCards();
       updateProductivityCard();
       renderCharts();
     });
